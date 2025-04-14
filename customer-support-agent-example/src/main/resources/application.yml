@@ -1,0 +1,15 @@
+langchain4j:
+  open-ai:
+    chat-model:
+      base-url: https://api.deepseek.com/v1
+      api-key:
+      model-name: deepseek-chat
+      strict-tools: true
+      temperature: 0.0
+      timeout: PT60S
+      log-requests: false
+      log-responses: false
+logging:
+  level:
+    dev:
+      langchain4j: DEBUG
