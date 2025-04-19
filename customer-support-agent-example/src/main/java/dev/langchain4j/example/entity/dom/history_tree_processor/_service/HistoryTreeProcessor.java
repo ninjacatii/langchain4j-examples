@@ -1,11 +1,18 @@
-package dev.langchain4j.example.util.dom.history_tree_processor;
+package dev.langchain4j.example.entity.dom.history_tree_processor._service;
 
 import dev.langchain4j.example.entity.dom._views.DOMBaseNode;
 import dev.langchain4j.example.entity.dom._views.DOMElementNode;
 import dev.langchain4j.example.entity.dom.history_tree_processor._view.DOMHistoryElement;
 import dev.langchain4j.example.entity.dom.history_tree_processor._view.HashedDomElement;
+import dev.langchain4j.example.entity.browser._context.BrowserContext;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class HistoryTreeProcessor {
     private static final String HASH_ALGORITHM = "SHA-256";

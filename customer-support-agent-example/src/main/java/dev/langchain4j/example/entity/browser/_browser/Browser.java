@@ -4,11 +4,13 @@ import com.microsoft.playwright.BrowserType;
 import com.microsoft.playwright.Playwright;
 import dev.langchain4j.example.entity.browser._context.BrowserContext;
 import dev.langchain4j.example.entity.browser._context.BrowserContextConfig;
+import lombok.Data;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+@Data
 public class Browser {
     private final BrowserConfig config;
     private Playwright playwright;
@@ -31,33 +33,31 @@ public class Browser {
         return config != null ? config : new BrowserContextConfig();
     }
 
-    public CompletableFuture<com.microsoft.playwright.Browser> getPlaywrightBrowser() {
+    public com.microsoft.playwright.Browser getPlaywrightBrowser() {
         if (playwrightBrowser != null) {
-            return CompletableFuture.completedFuture(playwrightBrowser);
+            return playwrightBrowser;
         }
         return initBrowser();
     }
 
-    private CompletableFuture<com.microsoft.playwright.Browser> initBrowser() {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                playwright = Playwright.create();
+    private com.microsoft.playwright.Browser initBrowser() {
+        try {
+            playwright = Playwright.create();
 
-                if (config.getCdpUrl() != null) {
-                    playwrightBrowser = setupRemoteCdpBrowser();
-                } else if (config.getWssUrl() != null) {
-                    playwrightBrowser = setupRemoteWssBrowser();
-                } else if (config.getBrowserBinaryPath() != null) {
-                    playwrightBrowser = setupUserProvidedBrowser();
-                } else {
-                    playwrightBrowser = setupBuiltinBrowser();
-                }
-
-                return playwrightBrowser;
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to initialize browser", e);
+            if (config.getCdpUrl() != null) {
+                playwrightBrowser = setupRemoteCdpBrowser();
+            } else if (config.getWssUrl() != null) {
+                playwrightBrowser = setupRemoteWssBrowser();
+            } else if (config.getBrowserBinaryPath() != null) {
+                playwrightBrowser = setupUserProvidedBrowser();
+            } else {
+                playwrightBrowser = setupBuiltinBrowser();
             }
-        });
+
+            return playwrightBrowser;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to initialize browser", e);
+        }
     }
 
     private com.microsoft.playwright.Browser setupRemoteCdpBrowser() {

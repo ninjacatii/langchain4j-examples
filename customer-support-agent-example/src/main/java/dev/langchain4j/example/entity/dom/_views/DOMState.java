@@ -1,11 +1,17 @@
 package dev.langchain4j.example.entity.dom._views;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.util.Map;
 
 @Data
+@AllArgsConstructor
 public class DOMState {
-    private DOMElementNode elementTree;
-    private Map<Integer, DOMElementNode> selectorMap;
+    protected DOMElementNode elementTree;
+    protected Map<Integer, DOMElementNode> selectorMap;
+
+    public DOMState() {
+
+    }
 }

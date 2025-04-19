@@ -1,8 +1,10 @@
 package dev.langchain4j.example.entity.dom._views;
 
+import dev.langchain4j.example.entity.dom.history_tree_processor._service.HistoryTreeProcessor;
 import dev.langchain4j.example.entity.dom.history_tree_processor._view.CoordinateSet;
 import dev.langchain4j.example.entity.dom.history_tree_processor._view.HashedDomElement;
 import dev.langchain4j.example.entity.dom.history_tree_processor._view.ViewportInfo;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -13,6 +15,7 @@ import java.util.Map;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
+@AllArgsConstructor
 public class DOMElementNode extends DOMBaseNode {
     private String tagName;
     private String xpath;
@@ -27,6 +30,34 @@ public class DOMElementNode extends DOMBaseNode {
     private CoordinateSet pageCoordinates; // Nullable
     private ViewportInfo viewportInfo; // Nullable
     private Boolean isNew; // Nullable
+
+    public DOMElementNode(
+            String tagName,
+            String xpath,
+            Map<String, String> attributes,
+            List<DOMBaseNode> children,
+            Boolean isVisible,
+            Boolean isInteractive,
+            Boolean isTopElement,
+            Boolean isInViewport,
+            Integer highlightIndex,
+            Boolean shadowRoot,
+            DOMElementNode parent,
+            ViewportInfo viewportInfo
+    ) {
+        this.tagName = tagName;
+        this.xpath = xpath;
+        this.attributes = attributes;
+        this.children = children;
+        this.isVisible = isVisible;
+        this.isInteractive = isInteractive;
+        this.isTopElement = isTopElement;
+        this.isInViewport = isInViewport;
+        this.highlightIndex = highlightIndex;
+        this.shadowRoot = shadowRoot;
+        this.parent = parent;
+        this.viewportInfo = viewportInfo;
+    }
 
     @Override
     public Map<String, Object> toJson() {
@@ -83,7 +114,6 @@ public class DOMElementNode extends DOMBaseNode {
         }
     }
 
-    @TimedExecution("--clickable_elements_to_string")
     public String clickableElementsToString(List<String> includeAttributes) {
         StringBuilder builder = new StringBuilder();
         processNode(this, 0, includeAttributes, builder);
@@ -98,9 +128,9 @@ public class DOMElementNode extends DOMBaseNode {
                 String attributesStr = buildAttributesString(elementNode, includeAttributes, text);
 
                 builder.append("\t".repeat(depth))
-                        .append(elementNode.isNew() ? "*[" : "[")
+                        .append(elementNode.isNew ? "*[" : "[")
                         .append(elementNode.getHighlightIndex())
-                        .append(elementNode.isNew() ? "]*" : "]")
+                        .append(elementNode.isNew ? "]*" : "]")
                         .append("<")
                         .append(elementNode.getTagName());
 

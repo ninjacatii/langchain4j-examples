@@ -12,6 +12,12 @@ public class DOMTextNode extends DOMBaseNode {
     private String text;
     private final String type = "TEXT_NODE";
 
+    public DOMTextNode(String text, boolean isVisible, DOMElementNode parent) {
+        this.text = text;
+        this.isVisible = isVisible;
+        this.parent = parent;
+    }
+
     public boolean hasParentWithHighlightIndex() {
         DOMElementNode current = parent;
         while (current != null) {
