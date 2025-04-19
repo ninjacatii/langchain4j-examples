@@ -1,4 +1,4 @@
-package dev.langchain4j.example.booking;
+package dev.langchain4j.example.exception;
 
 public class BookingNotFoundException extends RuntimeException {
 

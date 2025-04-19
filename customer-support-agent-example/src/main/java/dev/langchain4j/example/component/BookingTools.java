@@ -1,8 +1,8 @@
-package dev.langchain4j.example;
+package dev.langchain4j.example.component;
 
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.example.booking.Booking;
-import dev.langchain4j.example.booking.BookingService;
+import dev.langchain4j.example.entity.Booking;
+import dev.langchain4j.example.service.BookingService;
 import org.springframework.stereotype.Component;
 
 @Component

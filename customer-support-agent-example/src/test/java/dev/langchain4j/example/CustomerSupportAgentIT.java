@@ -1,8 +1,9 @@
 package dev.langchain4j.example;
 
-import dev.langchain4j.example.booking.Booking;
-import dev.langchain4j.example.booking.BookingService;
-import dev.langchain4j.example.booking.Customer;
+import dev.langchain4j.example.entity.Booking;
+import dev.langchain4j.example.service.BookingService;
+import dev.langchain4j.example.entity.Customer;
+import dev.langchain4j.example.service.CustomerSupportAgent;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.Result;

@@ -1,5 +1,8 @@
-package dev.langchain4j.example.booking;
+package dev.langchain4j.example.service;
 
+import dev.langchain4j.example.entity.Customer;
+import dev.langchain4j.example.entity.Booking;
+import dev.langchain4j.example.exception.BookingNotFoundException;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;

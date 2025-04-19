@@ -1,5 +1,6 @@
-package dev.langchain4j.example;
+package dev.langchain4j.example.controller;
 
+import dev.langchain4j.example.service.CustomerSupportAgent;
 import dev.langchain4j.service.Result;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;

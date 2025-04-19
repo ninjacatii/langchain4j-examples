@@ -1,4 +1,4 @@
-package dev.langchain4j.example;
+package dev.langchain4j.example.config;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;

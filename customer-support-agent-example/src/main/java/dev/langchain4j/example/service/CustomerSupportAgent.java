@@ -1,4 +1,4 @@
-package dev.langchain4j.example;
+package dev.langchain4j.example.service;
 
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.Result;
