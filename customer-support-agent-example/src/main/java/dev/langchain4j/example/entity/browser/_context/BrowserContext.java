@@ -2,32 +2,23 @@ package dev.langchain4j.example.entity.browser._context;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.convert.Convert;
-import cn.hutool.core.convert.TypeConverter;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.date.DateUnit;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.io.file.PathUtil;
-import cn.hutool.core.math.MathUtil;
 import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONArray;
-import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.google.gson.JsonObject;
 import com.microsoft.playwright.*;
@@ -39,6 +30,7 @@ import dev.langchain4j.example.entity.browser._views.BrowserState;
 import dev.langchain4j.example.entity.browser._views.TabInfo;
 import dev.langchain4j.example.entity.browser._views.URLNotAllowedError;
 import dev.langchain4j.example.entity.dom._service.DomService;
+import dev.langchain4j.example.entity.dom._views.DOMBaseNode;
 import dev.langchain4j.example.entity.dom._views.DOMElementNode;
 import dev.langchain4j.example.entity.dom._views.DOMState;
 import dev.langchain4j.example.util.dom.history_tree_processor.Utils;
@@ -151,51 +143,6 @@ public class BrowserContext implements AutoCloseable {
         return this.getCurrentPage(session);
     }
 
-    private Page getCurrentPage(BrowserSession session) {
-        List<Page> pages = session.getContext().pages();
-
-        if (StrUtil.isNotBlank(this.browser.getConfig().getCdpUrl()) && StrUtil.isNotBlank(this.state.getTargetId())) {
-            List<Hashtable<String, String>> targets = this.getCdpTargets();
-            for (Hashtable<String, String> target : targets) {
-                if (target.get("targetId").equals(this.state.getTargetId())) {
-                    for (Page page : pages) {
-                        if (page.url().equals(target.get("url"))) {
-                            return page;
-                        }
-                    }
-                }
-            }
-        }
-
-        if (this.activeTab != null && !this.activeTab.isClosed()) {
-            for (Page page : session.getContext().pages()) {
-                if (this.activeTab == page) {
-                    return this.activeTab;
-                }
-            }
-        }
-
-        var nonExtensionPages = new ArrayList<Page>();
-        for (Page page : pages) {
-            if (!page.url().startsWith("chrome-extension://") && !page.url().startsWith("chrome://")) {
-                nonExtensionPages.add(page);
-            }
-        }
-        if (!CollUtil.isEmpty(nonExtensionPages)) {
-            return nonExtensionPages.get(nonExtensionPages.size() - 1);
-        }
-
-        try {
-            return session.getContext().newPage();
-        } catch (Exception e) {
-            log.warn("⚠️  No browser window available, opening a new window");
-            this.initializeSession();
-            Page page = session.getContext().newPage();
-            this.activeTab = page;
-            return page;
-        }
-    }
-
     private com.microsoft.playwright.BrowserContext createContext(com.microsoft.playwright.Browser browser) {
         com.microsoft.playwright.BrowserContext context = null;
         if (!StrUtil.isBlank(this.browser.getConfig().getCdpUrl()) && browser.contexts().size() > 0) {
@@ -275,7 +222,8 @@ public class BrowserContext implements AutoCloseable {
         Page page = this.getCurrentPage();
 
         var pendingRequests = new HashSet<Request>();
-        DateTime lastActivity = DateTime.now();
+        LastActivity lastActivity = new LastActivity();
+        lastActivity.setTime(DateTime.now());
 
         var RELEVANT_RESOURCE_TYPES = new HashSet<String>(Arrays.asList(
                 "document",
@@ -395,7 +343,7 @@ public class BrowserContext implements AutoCloseable {
                 return;
             }
             pendingRequests.add(request);
-            DateTime lastActivity = DateUtil.date();
+            lastActivity.setTime(DateUtil.date());
         };
         Consumer<Response> onResponse = (response) -> {
             Request request = response.request();
@@ -430,7 +378,7 @@ public class BrowserContext implements AutoCloseable {
             }
 
             pendingRequests.remove(request);
-            lastActivity = DateUtil.date();
+            lastActivity.setTime(DateUtil.date());
         };
 
         page.onRequest(onRequest);
@@ -441,7 +389,7 @@ public class BrowserContext implements AutoCloseable {
             while (true) {
                 ThreadUtil.sleep(0.1, TimeUnit.SECONDS);
                 DateTime now = DateUtil.date();
-                if (pendingRequests.isEmpty() && DateUtil.between (lastActivity, now, DateUnit.SECOND) >= this.config.getWaitForNetworkIdlePageLoadTime()) {
+                if (pendingRequests.isEmpty() && DateUtil.between (lastActivity.getTime(), now, DateUnit.SECOND) >= this.config.getWaitForNetworkIdlePageLoadTime()) {
                     break;
                 }
                 if (DateUtil.between(startTime, now, DateUnit.SECOND) > this.config.getMaximumWaitPageLoadTime()) {
@@ -651,7 +599,7 @@ public class BrowserContext implements AutoCloseable {
     public BrowserState getState(boolean cacheClickableElementsHashes) {
         this.waitForPageAndFramesLoad(null);
         BrowserSession session = this.getSession();
-        BrowserState updatedState = this.getUpdatedState();
+        BrowserState updatedState = this.getUpdatedState(-1);
 
         if (cacheClickableElementsHashes) {
             if (session.getCachedStateClickableElementsHashes() != null &&
@@ -698,7 +646,7 @@ public class BrowserContext implements AutoCloseable {
             DomService domService = new DomService(page);
             DOMState content = domService.getClickableElements(this.config.isHighlightElements(), this.config.getViewportExpansion(), focusElement);
             List<TabInfo> tabsInfo = this.getTabsInfo();
-            String screenshotB64 = this.takeScreenshot();
+            String screenshotB64 = this.takeScreenshot(false);
             Tuple<Integer, Integer> tuple = this.getScrollInfo(page);
             int pixelAbove = tuple._1();
             int pixelBelow = tuple._2();
@@ -1180,17 +1128,172 @@ public class BrowserContext implements AutoCloseable {
         page.waitForLoadState();
     }
 
+    public void createNewTab(String url) {
+        if (StrUtil.isNotBlank(url) && !this.isUrlAllowed(url)) {
+            throw new BrowserError("Cannot create new tab with non-allowed URL: " + url);
+        }
 
+        BrowserSession session = this.getSession();
+        Page newPage = session.getContext().newPage();
 
+        this.activeTab = newPage;
 
+        newPage.waitForLoadState();
 
+        if (StrUtil.isNotBlank(url)) {
+            newPage.navigate(url);
+            this.waitForPageAndFramesLoad(1.0f);
+        }
 
+        if (StrUtil.isNotBlank(this.browser.getConfig().getCdpUrl())) {
+            List<Hashtable<String, String>> targets = this.getCdpTargets();
+            for (Hashtable<String, String> target : targets) {
+                if (newPage.url().equals(target.get("url"))) {
+                    this.state.setTargetId(target.get("targetId"));
+                    break;
+                }
+            }
+        }
+    }
+
+    private Page getCurrentPage(BrowserSession session) {
+        List<Page> pages = session.getContext().pages();
+
+        if (StrUtil.isNotBlank(this.browser.getConfig().getCdpUrl()) && StrUtil.isNotBlank(this.state.getTargetId())) {
+            List<Hashtable<String, String>> targets = this.getCdpTargets();
+            for (Hashtable<String, String> target : targets) {
+                if (this.state.getTargetId().equals(target.get("targetId"))) {
+                    for (Page page : pages) {
+                        if (page.url().equals(target.get("url"))) {
+                            return page;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (this.activeTab != null && session.getContext().pages().contains(this.activeTab) && !this.activeTab.isClosed()) {
+            return this.activeTab;
+        }
+
+        var nonExtensionPages = new ArrayList<Page>();
+        for (Page page : pages) {
+            if (!page.url().startsWith("chrome-extension://") && !page.url().startsWith("chrome://")) {
+                nonExtensionPages.add(page);
+            }
+        }
+        if (!CollUtil.isEmpty(nonExtensionPages)) {
+            return nonExtensionPages.get(nonExtensionPages.size() - 1);
+        }
+
+        try {
+            return session.getContext().newPage();
+        } catch (Exception e) {
+            log.warn("⚠️  No browser window available, opening a new window");
+            this.initializeSession();
+            Page page = session.getContext().newPage();
+            this.activeTab = page;
+            return page;
+        }
+    }
+
+    public Map<Integer, DOMElementNode> getSelectorMap() {
+        BrowserSession session = this.getSession();
+        if (session.getCachedState() == null) {
+            return new HashMap<>();
+        }
+        return session.getCachedState().getSelectorMap();
+    }
+
+    public ElementHandle getElementByIndex(int index) {
+        Map<Integer, DOMElementNode> selectorMap = this.getSelectorMap();
+        ElementHandle elementHandle = this.getLocateElement(selectorMap.get(index));
+        return elementHandle;
+    }
+
+    public DOMElementNode getDomElementByIndex(int index) {
+        Map<Integer, DOMElementNode> selectorMap = this.getSelectorMap();
+        return selectorMap.get(index);
+    }
+
+    public void saveCookies() {
+        if (this.session != null && this.session.getContext() != null && StrUtil.isNotBlank(this.config.getCookiesFile())) {
+            try {
+                List<Cookie> cookies = this.session.getContext().cookies();
+                log.debug("🍪  Saving " + cookies.size() + " cookies to " + this.config.getCookiesFile());
+
+                FileUtil.writeString(JSONUtil.toJsonStr(cookies), FileUtil.file(this.config.getCookiesFile()), StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                log.warn("❌  Failed to save cookies: {}", e.getMessage());
+            }
+        }
+    }
+
+    public boolean isFileUploader(DOMElementNode elementNode, int maxDepth, int currentDepth) {
+        if (currentDepth > maxDepth) {
+            return false;
+        }
+
+        boolean isUploader = false;
+
+        if (elementNode == null) {
+            return false;
+        }
+
+        if ("input".equals(elementNode.getTagName())) {
+            isUploader = "file".equals(elementNode.getAttributes().get("type")) || elementNode.getAttributes().get("accept") != null;
+        }
+
+        if (isUploader) {
+            return true;
+        }
+
+        if (!CollUtil.isEmpty(elementNode.getChildren()) && currentDepth < maxDepth) {
+            for (DOMBaseNode child : elementNode.getChildren()) {
+                if (child instanceof DOMElementNode) {
+                    if (this.isFileUploader((DOMElementNode)child, maxDepth, currentDepth + 1)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
 
     public Tuple<Integer, Integer> getScrollInfo(Page page) {
         int scrollY = Convert.toInt(page.evaluate("window.scrollY"));
         int viewportHeight = Convert.toInt(page.evaluate("window.innerHeight"));
         int totalHeight = Convert.toInt(page.evaluate("document.documentElement.scrollHeight"));
         return new Tuple<>(scrollY, totalHeight - (scrollY + viewportHeight));
+    }
+
+    public void resetContext() {
+        BrowserSession session = this.getSession();
+
+        List<Page> pages = session.getContext().pages();
+        for (Page page : pages) {
+            page.close();
+        }
+
+        this.activeTab = null;
+        session.setCachedState(null);
+        this.state.setTargetId(null);
+    }
+
+    private String getUniqueFilename(String directory, String filename) {
+        String ext = filename.substring(filename.lastIndexOf("."));
+        String base = filename.substring(0, filename.lastIndexOf("."));
+        int counter = 1;
+        String newFilename = filename;
+        while (FileUtil.exist(directory + File.separator + newFilename)) {
+            newFilename = base + "(" +  counter++ + ")" + ext;
+        }
+        return newFilename;
+    }
+
+    public void waitForElement(String selector, float timeout) {
+        Page page = this.getCurrentPage();
+        page.waitForSelector(selector, new Page.WaitForSelectorOptions().setState(WaitForSelectorState.VISIBLE));
     }
 
     private CompletableFuture<Page> findOrCreateActiveTab() {
@@ -1213,39 +1316,33 @@ public class BrowserContext implements AutoCloseable {
         });
     }
 
-    public CompletableFuture<Void> close() {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                if (session != null) {
-                    // Clean up resources
-                    if (pageEventHandler != null) {
-                        session.getContext().offPage(pageEventHandler);
-                    }
-
-                    // Stop tracing if enabled
-                    if (config.getTracePath() != null) {
-                        session.getContext().tracing().stop(new Tracing.StopOptions()
-                                .setPath(Paths.get(config.getTracePath(), contextId + ".zip")));
-                    }
-
-                    // Close context if not keeping alive
-                    if (!config.isKeepAlive()) {
-                        session.getContext().close();
-                    }
-                }
-            } finally {
-                session = null;
-                activeTab = null;
-                pageEventHandler = null;
-            }
-        });
-    }
-
     // Additional browser operations would be implemented here...
 
     @Override
     public void close() {
-        close().join();
+        try {
+            if (session != null) {
+                // Clean up resources
+                if (pageEventHandler != null) {
+                    session.getContext().offPage(pageEventHandler);
+                }
+
+                // Stop tracing if enabled
+                if (config.getTracePath() != null) {
+                    session.getContext().tracing().stop(new Tracing.StopOptions()
+                            .setPath(Paths.get(config.getTracePath(), contextId + ".zip")));
+                }
+
+                // Close context if not keeping alive
+                if (!config.isKeepAlive()) {
+                    session.getContext().close();
+                }
+            }
+        } finally {
+            session = null;
+            activeTab = null;
+            pageEventHandler = null;
+        }
     }
 
     private List<Hashtable<String, String>> getCdpTargets() {

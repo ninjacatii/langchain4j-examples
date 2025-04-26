@@ -1,5 +1,12 @@
 package dev.langchain4j.example.entity.agent._views;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+
+import cn.hutool.json.JSONUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
 
 @Data
@@ -25,7 +32,7 @@ public class AgentHistoryList {
         Files.createDirectories(path.getParent());
 
         ObjectMapper mapper = new ObjectMapper();
-        String json = mapper.writeValueAsString(this.modelDump());
+        String json = mapper.writeValueAsString(JSONUtil.toJsonStr(this));
 
         Files.writeString(path, json);
     }

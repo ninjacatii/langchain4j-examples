@@ -1,9 +1,14 @@
 package dev.langchain4j.example.entity.agent._service;
 
+import com.microsoft.playwright.Browser;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.example.entity.agent.message_manager._service.MessageManager;
+import dev.langchain4j.example.entity.agent.message_manager._service.MessageManagerSettings;
 import dev.langchain4j.example.entity.browser._context.BrowserContext;
 import dev.langchain4j.example.entity.memory._service.Memory;
+import dev.langchain4j.example.entity.memory._service.MemorySettings;
 
+import java.util.List;
 import java.util.Map;
 
 public class Agent<T> {
@@ -23,7 +28,6 @@ public class Agent<T> {
     private final String version;
     private final String source;
     private final T context;
-    private final ProductTelemetry telemetry = new ProductTelemetry();
 
     public Agent(String task, Object llm, Browser browser,
                  BrowserContext browserContext, Controller<T> controller,

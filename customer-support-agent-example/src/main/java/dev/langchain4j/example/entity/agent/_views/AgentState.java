@@ -1,5 +1,6 @@
 package dev.langchain4j.example.entity.agent._views;
 
+import dev.langchain4j.example.entity.agent.message_manager._views.MessageManagerState;
 import lombok.Data;
 import org.springframework.lang.Nullable;
 

@@ -1,5 +1,6 @@
 package dev.langchain4j.example.entity.controller.registry._service;
 
+import com.microsoft.playwright.Page;
 import dev.langchain4j.example.entity.browser._context.BrowserContext;
 import dev.langchain4j.example.entity.controller.registry._views.ActionModel;
 import dev.langchain4j.example.entity.controller.registry._views.ActionRegistry;
@@ -24,8 +25,11 @@ public class Registry<T> {
         this.excludeActions = excludeActions != null ? excludeActions : new ArrayList<>();
     }
 
-    public ActionDecorator action(String description, Class<?> paramModel,
-                                  List<String> domains, Predicate<Object> pageFilter) {
+    public ActionDecorator action(
+            String description,
+            Class<?> paramModel,
+            List<String> domains,
+            Predicate<Object> pageFilter) {
         return new ActionDecorator(this, description, paramModel, domains, pageFilter);
     }
 
@@ -75,8 +79,8 @@ public class Registry<T> {
                                 List<String> availableFilePaths, T context) {
         // Method invocation logic using reflection
         try {
-            Method method = action.getFunction().getClass().getMethod("execute");
-            return method.invoke(action.getFunction(), params, browser,
+            Method method = action.function().getClass().getMethod("execute");
+            return method.invoke(action.function(), params, browser,
                     pageExtractionLlm, availableFilePaths, context);
         } catch (Exception e) {
             throw new RuntimeException("Failed to invoke action", e);
@@ -88,7 +92,7 @@ public class Registry<T> {
         return ActionModel.class; // Simplified for example
     }
 
-    public String getPromptDescription(Object page) {
+    public String getPromptDescription(Page page) {
         return registry.getPromptDescription(page);
     }
 
