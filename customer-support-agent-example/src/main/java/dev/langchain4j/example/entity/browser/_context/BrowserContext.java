@@ -1024,7 +1024,7 @@ public class BrowserContext implements AutoCloseable {
         }
     }
 
-    private String clickElementNode(DOMElementNode elementNode) throws Exception {
+    public String clickElementNode(DOMElementNode elementNode) throws Exception {
         Page page = this.getCurrentPage();
         try {
             ElementHandle elementHandle = this.getLocateElement(elementNode);
@@ -1106,6 +1106,9 @@ public class BrowserContext implements AutoCloseable {
     public void switchToTab(int pageId) {
         BrowserSession session = this.getSession();
         List<Page> pages = session.getContext().pages();
+        if (pageId == -1) {
+            pageId = pages.size() - 1;
+        }
 
         if (pageId >= pages.size()) {
             throw new BrowserError("No tab found with page_id: " + pageId);

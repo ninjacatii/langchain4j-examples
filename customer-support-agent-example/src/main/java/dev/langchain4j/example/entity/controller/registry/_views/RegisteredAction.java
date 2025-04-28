@@ -1,5 +1,7 @@
 package dev.langchain4j.example.entity.controller.registry._views;
 
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.microsoft.playwright.Page;
 
@@ -10,15 +12,24 @@ import java.util.function.Predicate;
 public record RegisteredAction(
         String name,
         String description,
-        Function<Object, Object> function, // Simplified function type
-        Class<?> paramModel,
+        Class[] paraType,
+        String[] paraName,
+
         List<String> domains,
-        Predicate<Page> pageFilter
+        Function<Page, Boolean> pageFilter
 ) {
     @JsonIgnore
-    public String getPromptDescription() {
-        // Simplified prompt generation
-        return description + ": \n{" + name + ": " +
-                paramModel.getSimpleName() + "}";
+    public String promptDescription() {
+        String s = this.description + ": \n";
+
+        JSONObject jo = JSONUtil.createObj();
+        JSONObject para = JSONUtil.createObj();
+        for (int i = 0; i < paraType.length; i++) {
+            para.set(paraName[i], JSONUtil.createObj().set("type", String.valueOf(paraType[i])));
+        }
+        jo.set(name, para);
+        s += jo.toStringPretty();
+
+        return s;
     }
 }
