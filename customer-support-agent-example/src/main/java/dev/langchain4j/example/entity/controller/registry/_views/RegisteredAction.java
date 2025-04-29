@@ -5,6 +5,7 @@ import cn.hutool.json.JSONUtil;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.microsoft.playwright.Page;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -14,6 +15,7 @@ public record RegisteredAction(
         String description,
         Class[] paraType,
         String[] paraName,
+        Method function,
 
         List<String> domains,
         Function<Page, Boolean> pageFilter
