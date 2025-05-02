@@ -8,10 +8,9 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.microsoft.playwright.Page;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.example.entity.agent._prompts.AgentMessagePrompt;
+import dev.langchain4j.example.entity.agent._prompts.PlannerPrompt;
 import dev.langchain4j.example.entity.agent._prompts.SystemPrompt;
 import dev.langchain4j.example.entity.agent._views.*;
 import dev.langchain4j.example.entity.agent.message_manager._service.MessageManager;
@@ -21,7 +20,9 @@ import dev.langchain4j.example.entity.browser._views.BrowserState;
 import dev.langchain4j.example.entity.browser._views.BrowserStateHistory;
 import dev.langchain4j.example.entity.controller.registry._service.Controller;
 import dev.langchain4j.example.entity.controller.registry._views.ActionModel;
+import dev.langchain4j.example.entity.controller.registry._views.RegisteredAction;
 import dev.langchain4j.example.entity.dom._views.DOMElementNode;
+import dev.langchain4j.example.entity.dom.history_tree_processor._service.HistoryTreeProcessor;
 import dev.langchain4j.example.entity.dom.history_tree_processor._view.DOMHistoryElement;
 import dev.langchain4j.example.entity.memory._service.Memory;
 import dev.langchain4j.example.entity.memory._service.MemorySettings;
@@ -707,10 +708,108 @@ public class Agent<T> {
     }
 
     public void logCompletion() {
+        log.info("✅ Task completed");
+        if (this.state.getHistory().isSuccessful()) {
+            log.info("✅ Successfully");
+        } else {
+            log.info("❌ Unfinished");
+        }
 
+        int totalTokens = this.state.getHistory().totalInputTokens();
+        log.info("📝 Total input tokens used (approximate): {}", totalTokens);
+
+        if (this.registerDoneCallback != null) {
+            this.registerDoneCallback.accept(this.state.getHistory());
+        }
     }
 
+    public List<ActionResult> rerunHistory(AgentHistoryList history, int maxRetries, boolean skipFailure, float delayBetweenActions) {
+        if (!CollUtil.isEmpty(this.initialActions)) {
+            List<ActionResult> result = this.multiAct(this.initialActions, true);
+            this.state.setLastResult(result);
+        }
 
+        var results = new ArrayList<ActionResult>();
+
+        for (int i = 0; i < history.getHistory().size(); i++) {
+            AgentHistory historyItem = history.getHistory().get(i);
+
+            String goal = historyItem.getModelOutput() != null ? historyItem.getModelOutput().getCurrentState().getNextGoal() : "";
+            log.info("Replaying step {}/{}: goal: {}", i + 1, history.getHistory().size(), goal);
+
+            if (historyItem.getModelOutput() == null
+                    || CollUtil.isEmpty(historyItem.getModelOutput().getAction())) {
+                log.warn("Step {}: No action to replay, skipping", i + 1);
+                results.add(ActionResult.builder().error("No action to replay"));
+                continue;
+            }
+
+            int retryCount = 0;
+            while (retryCount < maxRetries) {
+                try {
+                    List<ActionResult> result = this.executeHistoryStep(historyItem, delayBetweenActions);
+                    results.addAll(result);
+                    break;
+                } catch (Exception e) {
+                    retryCount += 1;
+                    if (retryCount == maxRetries) {
+                        String errorMsg = "Step " + (i + 1) + " failed after " + maxRetries + " attempts: " + e.getMessage();
+                        log.error(errorMsg);
+                        if (!skipFailure) {
+                            results.add(ActionResult.builder().error(errorMsg).build());
+                            throw new RuntimeException(errorMsg);
+                        }
+                    } else {
+                        log.warn("Step {} failed (attempt {}/{}), retrying...", i + 1, retryCount, maxRetries);
+                        ThreadUtil.sleep(delayBetweenActions, TimeUnit.SECONDS);
+                    }
+                }
+            }
+        }
+        return results;
+    }
+
+    private List<ActionResult> executeHistoryStep(AgentHistory historyItem, float delay) throws Exception {
+        BrowserState state = this.browserContext.getState(false);
+        if (state == null || historyItem.getModelOutput() == null) {
+            throw new Exception("Invalid state or model output");
+        }
+        List<ActionModel> updatedActions = new ArrayList<>();
+        for (int i = 0; i < historyItem.getModelOutput().getAction().size(); i++) {
+            ActionModel action = historyItem.getModelOutput().getAction().get(i);
+            ActionModel updatedAction = this.updateActionIndices(historyItem.getState().getInteractedElement().get(i), action, state);
+            updatedActions.add(updatedAction);
+
+            if (updatedAction == null) {
+                throw new Exception("Could not find matching element " + i + " in current page");
+            }
+        }
+
+        List<ActionResult> result = this.multiAct(updatedActions, true);
+
+        ThreadUtil.sleep(delay, TimeUnit.SECONDS);
+        return result;
+    }
+
+    private ActionModel updateActionIndices(DOMHistoryElement historyElement, ActionModel action, BrowserState currentState) {
+        if (historyElement ==null || currentState.getElementTree() == null) {
+            return action;
+        }
+
+        DOMElementNode currentElement = HistoryTreeProcessor.findHistoryElementInTree(historyElement, currentState.getElementTree());
+
+        if (currentElement == null || currentElement.getHighlightIndex() == null) {
+            return null;
+        }
+
+        int oldIndex = action.getIndex();
+        if (oldIndex != currentElement.getHighlightIndex()) {
+            action.setIndex(currentElement.getHighlightIndex());
+            log.info("Element moved in DOM, updated index from {} to {}", oldIndex, currentElement.getHighlightIndex());
+        }
+
+        return action;
+    }
 
     public void pause() {
         state.setPaused(true);
@@ -724,16 +823,65 @@ public class Agent<T> {
         state.setStopped(true);
     }
 
-    public CompletableFuture<Void> close() {
-        return CompletableFuture.runAsync(() -> {
-            if (browserContext != null) {
-                browserContext.close();
+    private List<ActionModel> convertInitialActions(List<HashMap<String, HashMap<String, Object>>> actions) {
+        List<ActionModel> convertedActions = new ArrayList<>();
+        for (HashMap<String, HashMap<String, Object>> actionDict : actions) {
+            for (String actionName: actionDict.keySet()) {
+                this.actionModel = (ActionModel)actionDict;
+                convertedActions.add(this.actionModel);
             }
-            if (browser != null) {
-                browser.close();
-            }
-        });
+        }
+        return convertedActions;
     }
 
-    // Additional agent methods would be implemented here...
+    private String runPlanner() {
+        if (this.settings.getPlannerLlm() == null) {
+            return null;
+        }
+
+        Page page = this.browserContext.getCurrentPage();
+
+        String standardActions = this.controller.getRegistry().getPromptDescription(null);
+        String pageActions = this.controller.getRegistry().getPromptDescription(page);
+
+        String allActions = standardActions;
+        if (StrUtil.isNotBlank(pageActions)) {
+            allActions += "\n" + pageActions;
+        }
+
+        List<ChatMessage> plannerMessages = new ArrayList<>();
+        plannerMessages.add(
+                new PlannerPrompt(allActions, 10, null, null).getSystemMessage(this.settings.isPlannerReasoning())
+        );
+        plannerMessages.addAll(
+                this.messageManager.getMessages().subList(1, this.messageManager.getMessages().size())
+        );
+
+        if (!this.settings.isUseVisionForPlanner() && this.settings.isUseVision()) {
+            UserMessage lastStateMessage = (UserMessage) plannerMessages.get(plannerMessages.size() - 1);
+            String newMsg = "";
+            if (lastStateMessage.contents() != null) {
+                for (Content msg : lastStateMessage.contents()) {
+                    if (msg.type() == ContentType.TEXT) {
+                        newMsg += ((TextContent)context).text();
+                    } else if (msg.type() == ContentType.IMAGE) {
+                        continue;
+                    }
+                }
+            } else {
+                newMsg = lastStateMessage.contents();
+            }
+        }
+    }
+
+    public void close() {
+        if (browserContext != null) {
+            browserContext.close();
+        }
+        if (browser != null) {
+            browser.close();
+        }
+    }
+
+
 }

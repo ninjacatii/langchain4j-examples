@@ -1,7 +1,16 @@
 package dev.langchain4j.example.entity.agent._prompts;
 
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+
+
 public class PlannerPrompt extends SystemPrompt {
-    public Object getSystemMessage(boolean isPlannerReasoning) {
+    public PlannerPrompt(String actionDescription, int maxActionsPerStep, String overrideSystemMessage, String extendSystemMessage) {
+        super(actionDescription, maxActionsPerStep, overrideSystemMessage, extendSystemMessage);
+    }
+
+    public ChatMessage getSystemMessage(boolean isPlannerReasoning) {
         String plannerPromptText = """
 You are a planning agent that helps break down tasks into smaller steps and reason about the current state.
 Your role is to:

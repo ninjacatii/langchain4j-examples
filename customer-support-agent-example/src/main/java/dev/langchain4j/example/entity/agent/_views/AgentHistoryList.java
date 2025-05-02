@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.json.JSONUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
@@ -47,5 +48,14 @@ public class AgentHistoryList {
         return mapper.readValue(json, AgentHistoryList.class);
     }
 
-    // Additional methods omitted for brevity...
+    public Boolean isSuccessful() {
+        if (!CollUtil.isEmpty(this.history) && !this.history.get(this.history.size() - 1).getResult().isEmpty()) {
+            List<ActionResult> list = this.history.get(this.history.size() - 1).getResult();
+            ActionResult lastResult = list.get(list.size() - 1);
+            if (lastResult.getIsDone()) {
+                return lastResult.getSuccess();
+            }
+        }
+        return null;
+    }
 }
