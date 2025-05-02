@@ -13,6 +13,7 @@ import dev.langchain4j.example.entity.agent._prompts.AgentMessagePrompt;
 import dev.langchain4j.example.entity.agent._prompts.PlannerPrompt;
 import dev.langchain4j.example.entity.agent._prompts.SystemPrompt;
 import dev.langchain4j.example.entity.agent._views.*;
+import dev.langchain4j.example.entity.agent.message_manager.Utils;
 import dev.langchain4j.example.entity.agent.message_manager._service.MessageManager;
 import dev.langchain4j.example.entity.agent.message_manager._service.MessageManagerSettings;
 import dev.langchain4j.example.entity.browser._context.BrowserContext;
@@ -61,7 +62,7 @@ public class Agent<T> {
     private T context;
     private String unfilteredActions;
     private ToolCallingMethod toolCallingMethod;
-    private List<Map<String, Map<String, Object>>> initialActions;
+    private List<ActionModel> initialActions;
     private boolean injectedBrowser;
     private boolean injectedBrowserContext;
     private NewStepCallbackFunction registerNewStepCallback;
@@ -82,7 +83,7 @@ public class Agent<T> {
             Controller<T> controller,
             // Initial agent run parameters
             Map<String, String> sensitiveData,
-            List<Map<String, Map<String, Object>>> initialActions,
+            List<HashMap<String, HashMap<String, Object>>> initialActions,
             // Cloud Callbacks
             NewStepCallbackFunction registerNewStepCallback,
             Consumer<AgentHistoryList> registerDoneCallback,
@@ -273,7 +274,7 @@ public class Agent<T> {
         log.info("📍 Step {}", this.state.getNSteps());
         BrowserState state = null;
         AgentOutput modelOutput = null;
-        var result = new ArrayList<ActionResult>();
+        List<ActionResult> result = null;
         DateTime stepStartTime = DateUtil.date();
         int tokens = 0;
 
@@ -287,7 +288,7 @@ public class Agent<T> {
 
             this.raiseIfStoppedOrPaused();
 
-            this.updateActionModelsForPage(activePage);
+            //this.updateActionModelsForPage(activePage);
 
             String pageFilteredActions = this.controller.getRegistry().getPromptDescription(activePage);
 
@@ -328,7 +329,7 @@ public class Agent<T> {
 
             if (stepInfo != null && stepInfo.isLastStep()) {
                 String msg = "Now comes your last step. Use only the \"done\" action now. No other actions - so here your action sequence must have length 1.";
-                msg += "\nIf the task is not yet fully finished as requested by the user, set success in "done" to false! E.g. if not all steps are fully completed.";
+                msg += "\nIf the task is not yet fully finished as requested by the user, set success in \"done\" to false! E.g. if not all steps are fully completed.";
                 msg += "\nIf the task is fully finished, set success in \"done\" to true.";
                 msg += "\nInclude everything you found out for the ultimate task in the done text.";
                 log.info("Last step finishing up");
@@ -337,10 +338,10 @@ public class Agent<T> {
             }
 
             List<ChatMessage> inputMessages = this.messageManager.getMessages();
-            int tokens = this.messageManager.getState().getHistory().getCurrentTokens();
+            tokens = this.messageManager.getState().getHistory().getCurrentTokens();
 
             try {
-                AgentOutput modelOutput = this.getNextAction(inputMessages);
+                modelOutput = this.getNextAction(inputMessages);
 
                 this.raiseIfStoppedOrPaused();
 
@@ -351,7 +352,7 @@ public class Agent<T> {
                 }
                 if (StrUtil.isNotBlank(this.settings.getSaveConversationPath())) {
                     String target = this.settings.getSaveConversationPath() + "_" + this.state.getNSteps() + ".txt";
-                    saveConversation(inputMessages, modelOutput, target, this.settings.getSaveConversationPathEncoding());
+                    //saveConversation(inputMessages, modelOutput, target, this.settings.getSaveConversationPathEncoding());
                 }
                 this.messageManager.removeLastStateMessage();
 
@@ -363,7 +364,7 @@ public class Agent<T> {
                 throw e;
             }
 
-            List<ActionResult> result1 = this.multiAct(modelOutput.getAction());
+            List<ActionResult> result1 = this.multiAct(modelOutput.getAction(), true);
 
             this.state.setLastResult(result1);
 
@@ -457,7 +458,7 @@ public class Agent<T> {
                 throw new LLMException(401, "LLM API call failed");
             }
             try {
-                JSONObject parsedJson = extractJsonFromModelOutput(output.aiMessage().text());
+                JSONObject parsedJson = Utils.extractJsonFromModelOutput(output.aiMessage().text());
                 this.agentOutput = JSONUtil.toBean(parsedJson, AgentOutput.class);
                 parsed = this.agentOutput;
                 response.put("parsed", parsed);
@@ -511,7 +512,7 @@ public class Agent<T> {
 
         if (parsed == null) {
             try {
-                JSONObject parsedJson = extractJsonFromModelOutput(output.aiMessage().text());
+                JSONObject parsedJson = Utils.extractJsonFromModelOutput(output.aiMessage().text());
                 this.agentOutput = JSONUtil.toBean(parsedJson, AgentOutput.class);
                 parsed = this.agentOutput;
             } catch (Exception e) {
@@ -740,7 +741,7 @@ public class Agent<T> {
             if (historyItem.getModelOutput() == null
                     || CollUtil.isEmpty(historyItem.getModelOutput().getAction())) {
                 log.warn("Step {}: No action to replay, skipping", i + 1);
-                results.add(ActionResult.builder().error("No action to replay"));
+                results.add(ActionResult.builder().error("No action to replay").build());
                 continue;
             }
 
@@ -869,9 +870,29 @@ public class Agent<T> {
                     }
                 }
             } else {
-                newMsg = lastStateMessage.contents();
+                //这儿暂时只取最后一条
+                newMsg = ((TextContent)lastStateMessage.contents().get(lastStateMessage.contents().size() - 1)).text();
             }
+
+            plannerMessages.remove(plannerMessages.size() - 1);
+            plannerMessages.add(new UserMessage(newMsg));
         }
+        plannerMessages = convertInputMessages(plannerMessages);
+
+        ChatResponse output;
+        try {
+            output = this.settings.getPlannerLlm().chat(plannerMessages);
+        } catch (Exception e) {
+            log.error("Failed to invoke planner: {}", e.getMessage());
+            throw new LLMException(401, "LLM API call failed");
+        }
+        JSONObject response = JSONUtil.parseObj(output.aiMessage().text());
+        String plan = response.getStr("content");
+        return plan;
+    }
+
+    public MessageManager messageManager() {
+        return this.messageManager;
     }
 
     public void close() {
@@ -882,6 +903,4 @@ public class Agent<T> {
             browser.close();
         }
     }
-
-
 }
