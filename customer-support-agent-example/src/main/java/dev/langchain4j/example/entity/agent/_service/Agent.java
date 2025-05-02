@@ -1,110 +1,716 @@
 package dev.langchain4j.example.entity.agent._service;
 
-import com.microsoft.playwright.Browser;
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.date.DateTime;
+import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.thread.ThreadUtil;
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
+import com.microsoft.playwright.Page;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.example.entity.agent._prompts.AgentMessagePrompt;
+import dev.langchain4j.example.entity.agent._prompts.SystemPrompt;
+import dev.langchain4j.example.entity.agent._views.*;
 import dev.langchain4j.example.entity.agent.message_manager._service.MessageManager;
 import dev.langchain4j.example.entity.agent.message_manager._service.MessageManagerSettings;
 import dev.langchain4j.example.entity.browser._context.BrowserContext;
+import dev.langchain4j.example.entity.browser._views.BrowserState;
+import dev.langchain4j.example.entity.browser._views.BrowserStateHistory;
+import dev.langchain4j.example.entity.controller.registry._service.Controller;
+import dev.langchain4j.example.entity.controller.registry._views.ActionModel;
+import dev.langchain4j.example.entity.dom._views.DOMElementNode;
+import dev.langchain4j.example.entity.dom.history_tree_processor._view.DOMHistoryElement;
 import dev.langchain4j.example.entity.memory._service.Memory;
 import dev.langchain4j.example.entity.memory._service.MemorySettings;
+import dev.langchain4j.example.exception.LLMException;
+import dev.langchain4j.example.iface.NewStepCallbackFunction;
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.example.entity.browser._browser.Browser;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.yaml.snakeyaml.util.Tuple;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
+@Slf4j
 public class Agent<T> {
-    private final String task;
-    private final Object llm;
-    private final Controller<T> controller;
-    private final Map<String, String> sensitiveData;
-    private final AgentSettings settings;
-    private final AgentState state;
-    private final MessageManager messageManager;
-    private final Memory memory;
-    private final Browser browser;
-    private final BrowserContext browserContext;
-    private final String modelName;
-    private final String plannerModelName;
-    private final String chatModelLibrary;
-    private final String version;
-    private final String source;
-    private final T context;
+    private String task;
+    private ChatLanguageModel llm;
+    private Controller<T> controller;
+    private Map<String, String> sensitiveData;
+    private AgentSettings settings;
+    private AgentState state;
+    private MessageManager messageManager;
+    private Memory memory;
+    private Browser browser;
+    private BrowserContext browserContext;
+    private String modelName;
+    private String plannerModelName;
+    private String chatModelLibrary;
+    private String version;
+    private String source;
+    private T context;
+    private String unfilteredActions;
+    private ToolCallingMethod toolCallingMethod;
+    private List<Map<String, Map<String, Object>>> initialActions;
+    private boolean injectedBrowser;
+    private boolean injectedBrowserContext;
+    private NewStepCallbackFunction registerNewStepCallback;
+    private Consumer<AgentHistoryList> registerDoneCallback;
+    private Supplier<Boolean> registerExternalAgentStatusRaiseErrorCallback;
+    private ActionModel actionModel;
+    private AgentOutput agentOutput;
+    private ActionModel doneActionModel;
+    private AgentOutput doneActionOutput;
+    private Runnable verificationTask;
 
-    public Agent(String task, Object llm, Browser browser,
-                 BrowserContext browserContext, Controller<T> controller,
-                 Map<String, String> sensitiveData, List<Map<String, Map<String, Object>>> initialActions,
-                 AgentSettings settings, T context) {
+    public Agent(
+            String task,
+            ChatLanguageModel llm,
+            // Optional parameters
+            Browser browser,
+            BrowserContext browserContext,
+            Controller<T> controller,
+            // Initial agent run parameters
+            Map<String, String> sensitiveData,
+            List<Map<String, Map<String, Object>>> initialActions,
+            // Cloud Callbacks
+            NewStepCallbackFunction registerNewStepCallback,
+            Consumer<AgentHistoryList> registerDoneCallback,
+            Supplier<Boolean> registerExternalAgentStatusRaiseErrorCallback,
+            // Agent settings
+            AgentSettings agentSettings,
+            // Inject state
+            AgentState injectedAgentState,
+            //
+            T context,
+            // Memory settings
+            boolean enableMemory,
+            int memoryInterval,
+            Hashtable<Object, Object> memoryConfig) {
+        if (agentSettings.getPageExtractionLlm() == null) {
+            agentSettings.setPageExtractionLlm(llm);
+        }
+
         this.task = task;
         this.llm = llm;
-        this.browser = browser != null ? browser : new Browser();
-        this.browserContext = browserContext != null ? browserContext :
-                new BrowserContext(this.browser, this.browser.getConfig().newContextConfig());
-        this.controller = controller != null ? controller : new Controller<>();
+        this.controller = controller;
         this.sensitiveData = sensitiveData;
-        this.settings = settings != null ? settings : new AgentSettings();
-        this.state = new AgentState();
-        this.context = context;
 
-        // Initialize model info
-        this.chatModelLibrary = llm.getClass().getSimpleName();
-        this.modelName = "Unknown";
-        this.plannerModelName = settings.getPlannerLlm() != null ? "Unknown" : null;
+        this.settings = agentSettings;
 
-        // Initialize message manager
+        this.state = injectedAgentState != null ? injectedAgentState : new AgentState();
+
+        this.setupActionModels();
+        this.setBrowserUseVersionAndSource();
+        this.initialActions = initialActions != null ? this.convertInitialActions(initialActions) : null;
+
+        this.setModelNames();
+        this.toolCallingMethod = this.setToolCallingMethod();
+
+        this.unfilteredActions = this.controller.getRegistry().getPromptDescription(null);
+
+        this.settings.setMessageContext(this.setMessageContext());
+
         this.messageManager = new MessageManager(
                 task,
-                new SystemMessage("System prompt"), // Placeholder
-                new MessageManagerSettings(
-                        settings.getMaxInputTokens(),
-                        settings.getIncludeAttributes(),
-                        settings.getMessageContext(),
-                        sensitiveData,
-                        settings.getAvailableFilePaths()
-                ),
-                state.getMessageManagerState()
-        );
+                new SystemPrompt(
+                    this.unfilteredActions,
+                    this.settings.getMaxActionsPerStep(),
+                    this.settings.getOverrideSystemMessage(),
+                    this.settings.getExtendSystemMessage()).getSystemMessage(),
+                MessageManagerSettings.builder()
+                        .maxInputTokens(this.settings.getMaxInputTokens())
+                        .includeAttributes(this.settings.getIncludeAttributes())
+                        .messageContext(this.settings.getMessageContext())
+                        .sensitiveData(sensitiveData)
+                        .availableFilePaths(this.settings.getAvailableFilePaths())
+                        .build(),
+                this.state.getMessageManagerState());
 
-        // Initialize memory if enabled
-        if (settings.isEnableMemory()) {
-            this.memory = new Memory(
-                    messageManager,
-                    llm,
-                    new MemorySettings(
-                            state.getAgentId(),
-                            settings.getMemoryInterval(),
-                            settings.getMemoryConfig()
-                    )
+        if (this.settings.isEnableMemory()) {
+            MemorySettings memorySettings = new MemorySettings(
+                    this.state.getAgentId(),
+                    this.settings.getMemoryInterval(),
+                    this.settings.getMemoryConfig()
             );
+
+            this.memory = new Memory(this.messageManager, this.llm, memorySettings);
         } else {
             this.memory = null;
         }
 
-        // Initialize version and source info
-        this.version = "unknown";
-        this.source = "unknown";
+        this.injectedBrowser = browser != null;
+        this.injectedBrowserContext = browserContext != null;
+        this.browser = browser != null ? browser : new Browser(null);
+        this.browserContext = browserContext != null ? browserContext :
+                new BrowserContext(this.browser, this.browser.getConfig().getNewContextConfig(), null);
+
+        this.registerNewStepCallback = registerNewStepCallback;
+        this.registerDoneCallback = registerDoneCallback;
+        this.registerExternalAgentStatusRaiseErrorCallback = registerExternalAgentStatusRaiseErrorCallback;
+
+        this.context = context;
+
+        if (StrUtil.isNotBlank(this.settings.getSaveConversationPath())) {
+            log.info("Saving conversation to {}", this.settings.getSaveConversationPath());
+        }
     }
 
-    public CompletableFuture<Void> step() {
-        return CompletableFuture.runAsync(() -> {
+    private String setMessageContext() {
+        if (this.toolCallingMethod == ToolCallingMethod.RAW) {
+            if (StrUtil.isNotBlank(this.settings.getMessageContext())) {
+                this.settings.setMessageContext(this.settings.getMessageContext() + "\n\nAvailable actions: " + this.unfilteredActions);
+            } else {
+                this.settings.setMessageContext("Available actions: " + this.unfilteredActions);
+            }
+        }
+        return this.settings.getMessageContext();
+    }
+
+    private void setBrowserUseVersionAndSource() {
+        //TODO:no use
+
+//        """Get the version and source of the browser-use package (git or pip in a nutshell)"""
+//        try:
+//			# First check for repository-specific files
+//        repo_files = ['.git', 'README.md', 'docs', 'examples']
+//        package_root = Path(__file__).parent.parent.parent
+//
+//			# If all of these files/dirs exist, it's likely from git
+//        if all(Path(package_root / file).exists() for file in repo_files):
+//        try:
+//					import subprocess
+//
+//                version = subprocess.check_output(['git', 'describe', '--tags']).decode('utf-8').strip()
+//        except Exception:
+//        version = 'unknown'
+//        source = 'git'
+//			else:
+//				# If no repo files found, try getting version from pip
+//				import pkg_resources
+//
+//                version = pkg_resources.get_distribution('browser-use').version
+//        source = 'pip'
+//        except Exception:
+//        version = 'unknown'
+//        source = 'unknown'
+//
+//        logger.debug(f'Version: {version}, Source: {source}')
+//        self.version = version
+//        self.source = source
+    }
+
+    private void setModelNames() {
+        //TODO:no use
+
+//        self.chat_model_library = self.llm.__class__.__name__
+//        self.model_name = 'Unknown'
+//        if hasattr(self.llm, 'model_name'):
+//        model = self.llm.model_name  # type: ignore
+//        self.model_name = model if model is not None else 'Unknown'
+//        elif hasattr(self.llm, 'model'):
+//        model = self.llm.model  # type: ignore
+//        self.model_name = model if model is not None else 'Unknown'
+//
+//        if self.settings.planner_llm:
+//        if hasattr(self.settings.planner_llm, 'model_name'):
+//        self.planner_model_name = self.settings.planner_llm.model_name  # type: ignore
+//        elif hasattr(self.settings.planner_llm, 'model'):
+//        self.planner_model_name = self.settings.planner_llm.model  # type: ignore
+//			else:
+//        self.planner_model_name = 'Unknown'
+//		else:
+//        self.planner_model_name = None
+    }
+
+    private void setupActionModels() {
+        //TODO:no use
+
+//        """Setup dynamic action models from controller's registry"""
+//		# Initially only include actions with no filters
+//        self.ActionModel = self.controller.registry.create_action_model()
+//		# Create output model with the dynamic actions
+//        self.AgentOutput = AgentOutput.type_with_custom_actions(self.ActionModel)
+//
+//		# used to force the done action when max_steps is reached
+//        self.DoneActionModel = self.controller.registry.create_action_model(include_actions=['done'])
+//        self.DoneAgentOutput = AgentOutput.type_with_custom_actions(self.DoneActionModel)
+    }
+
+    private ToolCallingMethod setToolCallingMethod() {
+        return toolCallingMethod;
+    }
+
+    public void addNewTask(String newTask) {
+        this.messageManager.addNewTask(newTask);
+    }
+
+    private void raiseIfStoppedOrPaused() {
+        //TODO:no use
+
+//        """Utility function that raises an InterruptedError if the agent is stopped or paused."""
+//
+//        if self.register_external_agent_status_raise_error_callback:
+//        if await self.register_external_agent_status_raise_error_callback():
+//        raise InterruptedError
+//
+//        if self.state.stopped or self.state.paused:
+//			# logger.debug('Agent paused after getting state')
+//        raise InterruptedError
+    }
+
+    public void step(AgentStepInfo stepInfo) {
+        log.info("📍 Step {}", this.state.getNSteps());
+        BrowserState state = null;
+        AgentOutput modelOutput = null;
+        var result = new ArrayList<ActionResult>();
+        DateTime stepStartTime = DateUtil.date();
+        int tokens = 0;
+
+        try {
+            state = this.browserContext.getState(true);
+            Page activePage = this.browserContext.getCurrentPage();
+
+            if (this.settings.isEnableMemory() && this.memory != null && this.state.getNSteps() % this.settings.getMemoryInterval() == 0) {
+                this.memory.createProceduralMemory(this.state.getNSteps());
+            }
+
+            this.raiseIfStoppedOrPaused();
+
+            this.updateActionModelsForPage(activePage);
+
+            String pageFilteredActions = this.controller.getRegistry().getPromptDescription(activePage);
+
+            if (StrUtil.isNotBlank(pageFilteredActions)) {
+                String pageActionMessage = "For this page, these additional actions are available:\n" + pageFilteredActions;
+                this.messageManager.addMessageWithTokens(new UserMessage(pageActionMessage), null, null);
+            }
+
+            if (this.toolCallingMethod == ToolCallingMethod.RAW) {
+                String allUnfilteredActions = this.controller.getRegistry().getPromptDescription(null);
+                String allActions = allUnfilteredActions;
+                if (StrUtil.isNotBlank(pageFilteredActions)) {
+                    allActions += "\n" + pageFilteredActions;
+                }
+
+                String messageContext = this.messageManager.getSettings().getMessageContext();
+                String[] contextLines = (StrUtil.isBlank(messageContext) ? "" : messageContext).split("\n");
+                var nonActionLines = new ArrayList<String>();
+                for (String line: contextLines) {
+                    if (!line.startsWith("Available actions:")) {
+                        nonActionLines.add(line);
+                    }
+                }
+                String updatedContext =StrUtil.join("\n", nonActionLines);
+                if (StrUtil.isNotBlank(updatedContext)) {
+                    updatedContext += "\n\nAvailable actions: " + allActions;
+                } else {
+                    updatedContext = "Available actions: " + allActions;
+                }
+                this.messageManager.getSettings().setMessageContext(updatedContext);
+            }
+            this.messageManager.addStateMessage(state, this.state.getLastResult(), stepInfo, this.settings.isUseVision());
+
+            if (this.settings.getPlannerLlm() != null && this.state.getNSteps() % this.settings.getPlannerInterval() == 0) {
+                String plan = this.runPlanner();
+                this.messageManager.addPlan(plan, -1);
+            }
+
+            if (stepInfo != null && stepInfo.isLastStep()) {
+                String msg = "Now comes your last step. Use only the \"done\" action now. No other actions - so here your action sequence must have length 1.";
+                msg += "\nIf the task is not yet fully finished as requested by the user, set success in "done" to false! E.g. if not all steps are fully completed.";
+                msg += "\nIf the task is fully finished, set success in \"done\" to true.";
+                msg += "\nInclude everything you found out for the ultimate task in the done text.";
+                log.info("Last step finishing up");
+                this.messageManager.addMessageWithTokens(new UserMessage(msg), null, null);
+//                this.AgentOutput = this.DoneAgentOutput;
+            }
+
+            List<ChatMessage> inputMessages = this.messageManager.getMessages();
+            int tokens = this.messageManager.getState().getHistory().getCurrentTokens();
+
             try {
-                // Step implementation would go here
-                // ...
+                AgentOutput modelOutput = this.getNextAction(inputMessages);
+
+                this.raiseIfStoppedOrPaused();
+
+                this.state.setNSteps(this.state.getNSteps() + 1);
+
+                if (this.registerNewStepCallback != null) {
+                    this.registerNewStepCallback.apply(state, modelOutput, this.state.getNSteps());
+                }
+                if (StrUtil.isNotBlank(this.settings.getSaveConversationPath())) {
+                    String target = this.settings.getSaveConversationPath() + "_" + this.state.getNSteps() + ".txt";
+                    saveConversation(inputMessages, modelOutput, target, this.settings.getSaveConversationPathEncoding());
+                }
+                this.messageManager.removeLastStateMessage();
+
+                this.raiseIfStoppedOrPaused();
+
+                this.messageManager.addModelOutput(modelOutput);
             } catch (Exception e) {
-                // Error handling
+                this.messageManager.removeLastStateMessage();
+                throw e;
             }
-        });
+
+            List<ActionResult> result1 = this.multiAct(modelOutput.getAction());
+
+            this.state.setLastResult(result1);
+
+            if (!result1.isEmpty() && result1.get(result1.size() - 1).getIsDone()) {
+                log.info("📄 Result: " + result1.get(result1.size() - 1).getExtractedContent());
+            }
+
+            this.state.setConsecutiveFailures(0);
+        } catch (Exception e) {
+            result = this.handleStepError(e);
+            this.state.setLastResult(result);
+        } finally {
+            DateTime stepEndTime = DateUtil.date();
+            List<ActionModel> actions = modelOutput.getAction();
+            if (result == null) {
+                return;
+            }
+            if (state != null) {
+                StepMetadata metadata = new StepMetadata(
+                        this.state.getNSteps(),
+                        stepStartTime,
+                        stepEndTime,
+                        tokens
+                );
+                this.makeHistoryItem(modelOutput, state, result, metadata);
+            }
+        }
     }
 
-    public CompletableFuture<AgentHistoryList> run(int maxSteps) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                // Run implementation would go here
-                // ...
-                return state.getHistory();
-            } finally {
-                close();
-            }
-        });
+    private List<ActionResult> handleStepError(Exception e) {
+        String errorMsg = AgentError.formatError(e, false);
+        String prefix = "❌ Result failed {self.state.consecutive_failures + 1}/{self.settings.max_failures} times:\n ";
+        this.state.setConsecutiveFailures(this.state.getConsecutiveFailures() + 1);
+
+        if (errorMsg.indexOf("Browser closed") >= 0) {
+            log.error("❌  Browser is closed or disconnected, unable to proceed");
+            return Collections.singletonList(ActionResult.builder().error("Browser closed or disconnected, unable to proceed").includeInMemory(false).build());
+        }
+        return Collections.singletonList(ActionResult.builder().error(errorMsg).includeInMemory(true).build());
     }
+
+    private void makeHistoryItem(AgentOutput modelOutput, BrowserState state, List<ActionResult> result, StepMetadata metadata) {
+        List<DOMHistoryElement> interactedElements = null;
+        if (modelOutput != null) {
+            interactedElements = AgentHistory.getInteractedElement(modelOutput, state.getSelectorMap());
+        } else {
+            interactedElements = new ArrayList<>();
+        }
+
+        BrowserStateHistory stateHistory = new BrowserStateHistory(
+                state.getUrl(),
+                state.getTitle(),
+                state.getTabs(),
+                interactedElements,
+                state.getScreenshot()
+        );
+
+        AgentHistory historyItem = new AgentHistory(modelOutput, result, stateHistory, metadata);
+        this.state.getHistory().getHistory().add(historyItem);
+    }
+
+    private static final Pattern THINK_TAGS = Pattern.compile("<think>.*?</think>", Pattern.DOTALL);
+    private static final Pattern STRAY_CLOSE_TAG = Pattern.compile(".*?</think>", Pattern.DOTALL);
+    private String removeThinkTags(String text) {
+        // 第一步：移除完整的 <think>...</think> 标签及内容
+        text = THINK_TAGS.matcher(text).replaceAll("");
+        // 第二步：移除残留的 </think> 及其前面的所有内容
+        text = STRAY_CLOSE_TAG.matcher(text).replaceAll("");
+        // 去除首尾空白字符
+        return text.trim();
+    }
+
+    private List<ChatMessage> convertInputMessages(List<ChatMessage> inputMessages) {
+        return inputMessages;
+    }
+
+    public AgentOutput getNextAction(List<ChatMessage> inputMessages) throws Exception {
+        inputMessages = this.convertInputMessages(inputMessages);
+
+        ChatResponse output;
+        var response = new HashMap<String, Object>();
+        AgentOutput parsed;
+        if (this.toolCallingMethod == ToolCallingMethod.RAW) {
+            log.debug("Using " + this.toolCallingMethod + " for " + this.chatModelLibrary);
+            try {
+                output = this.llm.chat(inputMessages);
+                response.put("raw", output);
+                response.put("parsed", null);
+            } catch (Exception e) {
+                log.error("Failed to invoke model: {}", e.getMessage());
+                throw new LLMException(401, "LLM API call failed");
+            }
+            try {
+                JSONObject parsedJson = extractJsonFromModelOutput(output.aiMessage().text());
+                this.agentOutput = JSONUtil.toBean(parsedJson, AgentOutput.class);
+                parsed = this.agentOutput;
+                response.put("parsed", parsed);
+            } catch (Exception e) {
+                log.warn("Failed to parse model output: {} {}", output, e.getMessage());
+                throw new Exception("Could not parse response.");
+            }
+        } else if (this.toolCallingMethod == null) {
+            try {
+                output = this.llm.chat(inputMessages);
+                response.put("raw", output);
+                response.put("parsed", null);
+                parsed = null;
+            } catch (Exception e) {
+                log.error("Failed to invoke model: {}", e.getMessage());
+                throw new LLMException(401, "LLM API call failed");
+            }
+        } else {
+            log.debug("Using {} for {}", this.toolCallingMethod, this.chatModelLibrary);
+            output = this.llm.chat(inputMessages);
+            response.put("raw", output);
+            response.put("parsed", null);
+        }
+
+        if (response.get("parsing_error") != null && response.containsKey("raw")) {
+            JSONObject rawMsg = JSONUtil.parseObj(String.valueOf(response.get("raw")));
+            if (rawMsg.containsKey("tool_calls")) {
+                JSONObject toolCall = rawMsg.getJSONArray("tool_calls").getJSONObject(0);
+                String toolCallName = toolCall.getStr("name");
+                HashMap<String, Object> toolCallArgs = toolCall.get("args", HashMap.class);
+
+                AgentBrain currentState = new AgentBrain(
+                        "Processing tool call",
+                        "Executing action",
+                        "Using tool call",
+                        "Execute " + toolCallName
+                );
+                List<ActionModel> action = new ArrayList<>();
+                ActionModel am = new ActionModel();
+                am.put(toolCallName, toolCallArgs);
+                action.add(am);
+
+                this.agentOutput = new AgentOutput(currentState, action);
+                parsed = this.agentOutput;
+            } else {
+                parsed = null;
+            }
+        } else {
+            parsed = JSONUtil.toBean(JSONUtil.toJsonStr(response.get("parsed")), AgentOutput.class);
+        }
+
+        if (parsed == null) {
+            try {
+                JSONObject parsedJson = extractJsonFromModelOutput(output.aiMessage().text());
+                this.agentOutput = JSONUtil.toBean(parsedJson, AgentOutput.class);
+                parsed = this.agentOutput;
+            } catch (Exception e) {
+                log.warn("Failed to parse model output: {} {}", JSONUtil.parseObj(response.get("raw")).get("content"), e.getMessage());
+                throw new Exception("Could not parse response.");
+            }
+        }
+
+        if (parsed.getAction().size() > this.settings.getMaxActionsPerStep()) {
+            parsed.setAction(CollUtil.split(parsed.getAction(), this.settings.getMaxActionsPerStep()).get(0));
+        }
+
+        if (this.state.isPaused() && this.state.isStopped()) {
+            //logResponse(parsed);
+        }
+        return parsed;
+    }
+
+    private void logAgentRun() {
+        log.info("🚀 Starting task: {}", this.task);
+        log.debug("Version: {}, Source: {}", this.version, this.source);
+    }
+
+    public Tuple<Boolean, Boolean> takeStep() {
+        this.step(null);
+
+        if (this.state.getHistory().isDone()) {
+            if (this.settings.isValidateOutput()) {
+                if (!this.validateOutput()) {
+                    return new Tuple<>(true, false);
+                }
+            }
+
+            this.logCompletion();
+            if (this.registerDoneCallback != null) {
+                this.registerDoneCallback.accept(this.state.getHistory());
+            }
+            return new Tuple<>(true, true);
+        }
+        return new Tuple<>(false, false);
+    }
+
+    public AgentHistoryList run(int maxSteps, AgentHookFunc onStepStart, AgentHookFunc onStepEnd) {
+        if (this.verificationTask != null) {
+            try {
+                this.verificationTask.run();
+            } catch (Exception e) {
+            }
+        }
+
+        try {
+            this.logAgentRun();
+
+            if (!CollUtil.isEmpty(this.initialActions)) {
+                this.state.setLastResult(this.multiAct(this.initialActions, false));
+            }
+
+            for (int step = 1; step <= maxSteps; step++) {
+                if (this.state.getConsecutiveFailures() >= this.settings.getMaxFailures()) {
+                    log.error("❌ Stopping due to {} consecutive failures", this.settings.getMaxFailures());
+                    break;
+                }
+
+                if (this.state.isStopped()) {
+                    log.info("Agent stopped");
+                    break;
+                }
+
+                while (this.state.isPaused()) {
+                    ThreadUtil.sleep(0.2, TimeUnit.SECONDS);
+                    if (this.state.isStopped()) {
+                        break;
+                    }
+                }
+
+                if (onStepStart != null) {
+                    onStepStart.accept(this);
+                }
+
+                AgentStepInfo stepInfo = new AgentStepInfo(step, maxSteps);
+                this.step(stepInfo);
+
+                if (onStepEnd != null) {
+                    onStepEnd.accept(this);
+                }
+
+                if (this.state.getHistory().isDone()) {
+                    if (this.settings.isValidateOutput() && step < maxSteps - 1) {
+                        if (!this.validateOutput()) {
+                            continue;
+                        }
+                    }
+
+                    this.logCompletion();
+                    break;
+                }
+            }
+            return this.state.getHistory();
+        } finally {
+            this.close();
+            if (this.settings.isGenerateGif()) {
+                String outputPath = "agent_history.gif";
+                if (StrUtil.isNotBlank(this.settings.getGenerateGifPath())) {
+                    outputPath = this.settings.getGenerateGifPath();
+                }
+                //create_history_gif(task=self.task, history=self.state.history, output_path=output_path)
+            }
+        }
+    }
+
+    public List<ActionResult> multiAct(List<ActionModel> actions, boolean checkForNewElements) {
+        var results = new ArrayList<ActionResult>();
+        Map<Integer, DOMElementNode> cachedSelectorMap = this.browserContext.getSelectorMap();
+        Set<String> cachedPathHashes = cachedSelectorMap.values()
+                .stream()
+                .map(e -> e.getHash().getBranchPathHash())
+                .collect(Collectors.toSet());
+
+        this.browserContext.removeHighlights();
+
+        for (int i = 0; i < actions.size(); i++) {
+            ActionModel action = actions.get(i);
+            if (action.getIndex() != null && i != 0) {
+                BrowserState newState = this.browserContext.getState(false);
+                Map<Integer, DOMElementNode> newSelectorMap = newState.getSelectorMap();
+
+                DOMElementNode origTarget = cachedSelectorMap.get(action.getIndex());
+                String origTargetHash = origTarget != null ? origTarget.getHash().getBranchPathHash() : null;
+                DOMElementNode newTarget = newSelectorMap.get(action.getIndex());
+                String newTargetHash = newTarget != null ? newTarget.getHash().getBranchPathHash() : null;
+                if (origTargetHash.equals(newTargetHash)) {
+                    String msg = "Element index changed after action " + i + " / " + actions.size() + ", because page changed.";
+                    log.info(msg);
+                    results.add(ActionResult.builder().extractedContent(msg).includeInMemory(true).build());
+                    break;
+                }
+
+                Set<String> newPathHashes = newSelectorMap.values().stream().map(e -> e.getHash().getBranchPathHash()).collect(Collectors.toSet());
+                if (checkForNewElements && cachedPathHashes.containsAll(newPathHashes)) {
+                    String msg = "Something new appeared after action " + i + " / " + actions.size();
+                    log.info(msg);
+                    results.add(ActionResult.builder().extractedContent(msg).includeInMemory(true).build());
+                    break;
+                }
+            }
+            this.raiseIfStoppedOrPaused();
+
+            ActionResult result = this.controller.act(
+                    action,
+                    this.browserContext,
+                    this.settings.getPageExtractionLlm(),
+                    this.sensitiveData,
+                    this.settings.getAvailableFilePaths(),
+                    this.context
+            );
+
+            results.add(result);
+
+            log.debug("Executed action " + (i + 1) + " / " + actions.size());
+        }
+        return results;
+    }
+
+    private boolean validateOutput() {
+        String systemMsg =
+                "You are a validator of an agent who interacts with a browser. " +
+                        "Validate if the output of last action is what the user wanted and if the task is completed. " +
+                        "If the task is unclear defined, you can let it pass. But if something is missing or the image does not show what was requested dont let it pass. " +
+                        "Try to understand the page and help the model with suggestions like scroll, do x, ... to get the solution right. " +
+                        "Task to validate: " + this.task + ". Return a JSON object with 2 keys: is_valid and reason. " +
+                        "is_valid is a boolean that indicates if the output is correct. " +
+                        "reason is a string that explains why it is valid or not." +
+                        " example: {\"is_valid\": false, \"reason\": \"The user wanted to search for \\\"cat photos\\\", but the agent searched for \\\"dog photos\\\" instead.\"}";
+
+        if (this.browserContext.getSession() != null) {
+            BrowserState state = this.browserContext.getState(false);
+            AgentMessagePrompt content = new AgentMessagePrompt(state, this.state.getLastResult(), this.settings.getIncludeAttributes(), null);
+            List<ChatMessage> msg = Arrays.asList(new SystemMessage(systemMsg));
+            ChatResponse output = this.llm.chat(msg);
+            JSONObject response = JSONUtil.parseObj(output.aiMessage().text());
+            JSONObject parsed = response.getJSONObject("parsed");
+            boolean isValid = parsed.getBool("is_valid");
+            if (!isValid) {
+                log.info("❌ Validator decision: {}", parsed.getStr("reason"));
+                String msg1 = "The output is not yet correct. " + parsed.getStr("reason") + ".";
+                this.state.setLastResult(Arrays.asList(ActionResult.builder().extractedContent(msg1).includeInMemory(true).build()));
+            } else {
+                log.info("✅ Validator decision: {}", parsed.getStr("reason"));
+            }
+            return isValid;
+        } else {
+            return true;
+        }
+    }
+
+    public void logCompletion() {
+
+    }
+
+
 
     public void pause() {
         state.setPaused(true);

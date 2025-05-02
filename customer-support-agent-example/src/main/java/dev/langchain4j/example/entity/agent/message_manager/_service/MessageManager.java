@@ -12,11 +12,13 @@ import dev.langchain4j.example.entity.agent.message_manager._views.ManagedMessag
 import dev.langchain4j.example.entity.agent.message_manager._views.MessageManagerState;
 import dev.langchain4j.example.entity.agent.message_manager._views.MessageMetadata;
 import dev.langchain4j.example.entity.browser._views.BrowserState;
+import lombok.Data;
 
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Data
 public class MessageManager {
     private String task;
     private final MessageManagerSettings settings;
@@ -80,7 +82,10 @@ public class MessageManager {
         this.task = newTask;
     }
 
-    @TimedExecution("--add_state_message")
+    public void removeLastStateMessage() {
+        this.state.getHistory().removeLastStateMessage();
+    }
+
     public void addStateMessage(BrowserState state, List<ActionResult> result,
                                 AgentStepInfo stepInfo, boolean useVision) {
         if (result != null) {
@@ -123,7 +128,6 @@ public class MessageManager {
         }
     }
 
-    @TimedExecution("--get_messages")
     public List<ChatMessage> getMessages() {
         List<ChatMessage> messages = new ArrayList<>();
         for (ManagedMessage m : state.getHistory().getMessages()) {
@@ -132,7 +136,7 @@ public class MessageManager {
         return messages;
     }
 
-    private void addMessageWithTokens(ChatMessage message, Integer position, String messageType) {
+    public void addMessageWithTokens(ChatMessage message, Integer position, String messageType) {
         if (settings.getSensitiveData() != null) {
             message = filterSensitiveData(message);
         }
@@ -141,7 +145,6 @@ public class MessageManager {
         state.getHistory().addMessage(message, metadata, position);
     }
 
-    @TimedExecution("--filter_sensitive_data")
     private ChatMessage filterSensitiveData(ChatMessage message) {
         // Implementation of sensitive data filtering
         return message;

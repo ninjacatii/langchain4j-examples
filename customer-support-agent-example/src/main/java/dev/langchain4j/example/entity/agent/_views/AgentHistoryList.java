@@ -12,6 +12,7 @@ import lombok.Data;
 @Data
 public class AgentHistoryList {
     private List<AgentHistory> history;
+    private boolean isDone;
 
     public double totalDurationSeconds() {
         return history.stream()

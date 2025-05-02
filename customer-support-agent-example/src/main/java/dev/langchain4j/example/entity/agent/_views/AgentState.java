@@ -10,9 +10,9 @@ import java.util.UUID;
 
 @Data
 public class AgentState {
-    private String agentId;
-    private int nSteps;
-    private int consecutiveFailures;
+    private String agentId = UUID.randomUUID().toString();
+    private int nSteps = 1;
+    private int consecutiveFailures = 0;
     @Nullable
     private List<ActionResult> lastResult;
     private AgentHistoryList history;
@@ -20,12 +20,4 @@ public class AgentState {
     private boolean paused;
     private boolean stopped;
     private MessageManagerState messageManagerState;
-
-    public AgentState() {
-        this.agentId = UUID.randomUUID().toString();
-        this.nSteps = 1;
-        this.consecutiveFailures = 0;
-        this.history = new AgentHistoryList(new ArrayList<>());
-        this.messageManagerState = new MessageManagerState();
-    }
 }

@@ -148,27 +148,4 @@ public class Registry<T> {
     public String getPromptDescription(Page page) {
         return registry.getPromptDescription(page);
     }
-
-    @Data
-    @AllArgsConstructor
-    public static class ActionDecorator {
-        private Registry<?> registry;
-        private String description;
-        private Class<?> paramModel;
-        private List<String> domains;
-        private Predicate<Object> pageFilter;
-
-        public Object decorate(Object function) {
-            // Action registration logic
-            String actionName = function.getClass().getSimpleName();
-            if (registry.getExcludeActions().contains(actionName)) {
-                return function;
-            }
-
-            RegisteredAction action = new RegisteredAction(
-                    actionName, description, function, paramModel, domains, pageFilter);
-            registry.getRegistry().getActions().put(actionName, action);
-            return function;
-        }
-    }
 }

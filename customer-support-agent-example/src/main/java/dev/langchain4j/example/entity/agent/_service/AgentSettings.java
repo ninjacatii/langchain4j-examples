@@ -1,5 +1,7 @@
 package dev.langchain4j.example.entity.agent._service;
 
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import lombok.Builder;
 import lombok.Data;
 
 import java.util.Arrays;
@@ -7,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 @Data
+@Builder
 public class AgentSettings {
     private boolean useVision = true;
     private boolean useVisionForPlanner = false;
@@ -19,7 +22,8 @@ public class AgentSettings {
     private int maxInputTokens = 128000;
     private boolean validateOutput = false;
     private String messageContext;
-    private Object generateGif = false;
+    private boolean generateGif = false;
+    private String generateGifPath;
     private List<String> availableFilePaths;
     private List<String> includeAttributes = Arrays.asList(
             "title", "type", "name", "role", "aria-label",
@@ -27,8 +31,8 @@ public class AgentSettings {
     );
     private int maxActionsPerStep = 10;
     private String toolCallingMethod = "auto";
-    private Object pageExtractionLlm;
-    private Object plannerLlm;
+    private ChatLanguageModel pageExtractionLlm;
+    private ChatLanguageModel plannerLlm;
     private int plannerInterval = 1;
     private boolean isPlannerReasoning = false;
     private boolean enableMemory = false;

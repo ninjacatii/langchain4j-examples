@@ -2,6 +2,7 @@ package dev.langchain4j.example.entity.browser._views;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.example.entity.dom.history_tree_processor._view.DOMHistoryElement;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.util.HashMap;
@@ -11,6 +12,7 @@ import java.util.stream.Collectors;
 
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@AllArgsConstructor
 public class BrowserStateHistory {
     private String url;
     private String title;
