@@ -16,5 +16,7 @@ public class AgentOutput {
         // Java doesn't support dynamic class creation like Python
         // Would need to use reflection or code generation
         throw new UnsupportedOperationException("Dynamic class creation not supported in Java");
+
+        //test
     }
 }

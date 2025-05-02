@@ -1,5 +1,6 @@
 package dev.langchain4j.example.entity.agent.message_manager._service;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -63,6 +64,15 @@ public class MessageManager {
 
         UserMessage placeholderMessage = new UserMessage("Example output:");
         addMessageWithTokens(placeholderMessage, null,"init");
+
+        var toolExecutionRequests = new ArrayList<ToolExecutionRequest>();
+        var request = ToolExecutionRequest.builder()
+            .id(String.valueOf(this.state.getToolId()))
+            .name("AgentOutput")
+            .arguments("").build();
+
+
+        AiMessage exampleToolCall = new AiMessage("", 111);
 
         // Example tool call would be implemented similarly
         // ...
