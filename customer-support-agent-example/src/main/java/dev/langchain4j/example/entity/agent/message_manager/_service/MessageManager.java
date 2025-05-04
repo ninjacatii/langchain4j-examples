@@ -1,5 +1,10 @@
 package dev.langchain4j.example.entity.agent.message_manager._service;
 
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -30,7 +35,7 @@ public class MessageManager {
                           MessageManagerSettings settings,
                           MessageManagerState state) {
         this.task = task;
-        this.settings = settings != null ? settings : new MessageManagerSettings();
+        this.settings = settings != null ? settings : MessageManagerSettings.builder().build();
         this.state = state != null ? state : new MessageManagerState();
         this.systemPrompt = systemMessage;
 
@@ -65,19 +70,44 @@ public class MessageManager {
         UserMessage placeholderMessage = new UserMessage("Example output:");
         addMessageWithTokens(placeholderMessage, null,"init");
 
+        JSONArray actionSample = JSONUtil.createArray();
+        actionSample.add(JSONUtil.createObj().set("click_element", JSONUtil.createObj().set("index", 127)));
+        JSONObject args = JSONUtil.createObj().set("current_state", JSONUtil.createObj()
+                        .set("evaluation_previous_goal", """
+                                Success - I successfully clicked on the 'Apple' link from the Google Search results page,
+                                which directed me to the 'Apple' company homepage. This is a good start toward finding
+                                the best place to buy a new iPhone as the Apple website often list iPhones for sale.
+                                """.trim())
+                        .set("memory", """
+                                I searched for 'iPhone retailers' on Google. From the Google Search results page,
+                                I used the 'click_element' tool to click on a element labelled 'Best Buy' but calling
+                                the tool did not direct me to a new page. I then used the 'click_element' tool to click
+                                on a element labelled 'Apple' which redirected me to the 'Apple' company homepage.
+                                Currently at step 3/15.
+                                """.trim())
+                        .set("next_goal", """
+                                Looking at reported structure of the current page, I can see the item '[127]<h3 iPhone/>'\s
+                                in the content. I think this button will lead to more information and potentially prices\s
+                                for iPhones. I'll click on the link to 'iPhone' at index [127] using the 'click_element'\s
+                                tool and hope to see prices on the next page.
+                                """.trim()))
+                .set("action", actionSample);
+
         var toolExecutionRequests = new ArrayList<ToolExecutionRequest>();
         var request = ToolExecutionRequest.builder()
             .id(String.valueOf(this.state.getToolId()))
             .name("AgentOutput")
-            .arguments("").build();
+            .arguments(args.toString()).build();
+        toolExecutionRequests.add(request);
+
+        AiMessage exampleToolCall = new AiMessage("", toolExecutionRequests);
+        addMessageWithTokens(exampleToolCall, null, "init");
+
+        placeholderMessage = new UserMessage("[Your task history memory starts here]");
+        addMessageWithTokens(placeholderMessage, null, null);
 
 
-        AiMessage exampleToolCall = new AiMessage("", 111);
-
-        // Example tool call would be implemented similarly
-        // ...
-
-        if (settings.getAvailableFilePaths() != null) {
+        if (!CollUtil.isEmpty(settings.getAvailableFilePaths())) {
             UserMessage filepathsMsg = new UserMessage(
                     "Here are file paths you can use: " + String.join(", ", settings.getAvailableFilePaths()));
             addMessageWithTokens(filepathsMsg, null,"init");
@@ -126,10 +156,16 @@ public class MessageManager {
     }
 
     public void addModelOutput(AgentOutput modelOutput) {
-        // Tool calls implementation would go here
-        // ...
-        addMessageWithTokens(new AiMessage("", toolCalls));
-        addToolMessage("");
+        var toolExecutionRequests = new ArrayList<ToolExecutionRequest>();
+        var request = ToolExecutionRequest.builder()
+                .id(String.valueOf(this.state.getToolId()))
+                .name("AgentOutput")
+                .arguments(JSONUtil.toJsonStr(modelOutput)).build();
+        toolExecutionRequests.add(request);
+
+        AiMessage exampleToolCall = new AiMessage("", toolExecutionRequests);
+        addMessageWithTokens(exampleToolCall, null, null);
+        addToolMessage("", null);
     }
 
     public void addPlan(String plan, Integer position) {
@@ -160,7 +196,7 @@ public class MessageManager {
         return message;
     }
 
-    private int countTokens(ChatMessage message) {
+    public int countTokens(ChatMessage message) {
         // Implementation of token counting
         return 0;
     }

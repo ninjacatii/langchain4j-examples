@@ -769,7 +769,7 @@ public class BrowserContext implements AutoCloseable {
         return baseSelector;
     }
 
-    private String enhancedCssSelectorForElement(DOMElementNode element, boolean includeDynamicAttributes) {
+    public static String enhancedCssSelectorForElement(DOMElementNode element, boolean includeDynamicAttributes) {
         try {
             String cssSelector = convertSimpleXpathToCssSelector(element.getXpath());
 

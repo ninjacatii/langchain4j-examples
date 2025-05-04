@@ -84,7 +84,7 @@ public class Browser {
         return browserType.launch(new BrowserType.LaunchOptions()
                 .setHeadless(config.isHeadless())
                 .setArgs(args)
-                .setProxy(config.getProxy())
+                .setProxy(String.valueOf(config.getProxy()))
                 .setHandleSIGTERM(false)
                 .setHandleSIGINT(false));
     }
