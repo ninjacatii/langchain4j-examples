@@ -1,11 +1,12 @@
 package dev.langchain4j.example.entity.memory._service;
 
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.example.entity.agent.message_manager._service.MessageManager;
 import dev.langchain4j.example.entity.agent.message_manager._views.ManagedMessage;
 import dev.langchain4j.example.entity.agent.message_manager._views.MessageMetadata;
-import dev.langchain4j.example.util.custom.UserMessage;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -48,7 +49,6 @@ public class Memory {
         return null; // Replace with actual initialization
     }
 
-    @TimedExecution("--create_procedural_memory")
     public void createProceduralMemory(int currentStep) {
         List<ManagedMessage> allMessages = messageManager.getState().getHistory().getMessages();
         List<ManagedMessage> newMessages = new ArrayList<>();
@@ -59,9 +59,7 @@ public class Memory {
                     msg.getMetadata().getMessageType().equals("memory")) {
                 newMessages.add(msg);
             } else {
-                if (!msg.getMessage().getContent().isEmpty()) {
-                    messagesToProcess.add(msg);
-                }
+                messagesToProcess.add(msg);
             }
         }
 

@@ -19,7 +19,7 @@ public class HistoryTreeProcessor {
 
     public static DOMHistoryElement convertDomElementToHistoryElement(DOMElementNode domElement) {
         List<String> parentBranchPath = getParentBranchPath(domElement);
-        String cssSelector = BrowserContext.enhancedCssSelectorForElement(domElement);
+        String cssSelector = BrowserContext.enhancedCssSelectorForElement(domElement, true);
 
         return new DOMHistoryElement(
                 domElement.getTagName(),
