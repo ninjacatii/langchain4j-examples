@@ -6,14 +6,26 @@ import java.nio.file.Path;
 import java.util.List;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.example.entity.controller.registry._views.ActionModel;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 
 @Data
+@AllArgsConstructor
 public class AgentHistoryList {
     private List<AgentHistory> history;
-    private boolean isDone;
+
+    public boolean isDone() {
+        if (this.history != null && this.history.get(this.history.size() - 1).getResult().size() > 0) {
+            List<ActionResult> list = this.history.get(this.history.size() - 1).getResult();
+            ActionResult lastResult = list.get(list.size() - 1);
+            return lastResult.getIsDone();
+        }
+        return false;
+    }
 
     public double totalDurationSeconds() {
         return history.stream()
@@ -54,6 +66,16 @@ public class AgentHistoryList {
             ActionResult lastResult = list.get(list.size() - 1);
             if (lastResult.getIsDone()) {
                 return lastResult.getSuccess();
+            }
+        }
+        return null;
+    }
+
+    public JSONObject lastAction() {
+        if (this.history != null && this.history.get(this.history.size() - 1).getModelOutput() != null) {
+            List<ActionModel> lastAction = this.history.get(this.history.size() - 1).getModelOutput().getAction();
+            if (lastAction != null) {
+                return lastAction.get(lastAction.size() - 1).modelDump(true);
             }
         }
         return null;

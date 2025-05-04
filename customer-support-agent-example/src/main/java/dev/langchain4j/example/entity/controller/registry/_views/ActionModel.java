@@ -1,6 +1,8 @@
 package dev.langchain4j.example.entity.controller.registry._views;
 
 import cn.hutool.core.convert.Convert;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 
 import java.util.HashMap;
 
@@ -22,5 +24,9 @@ public class ActionModel extends HashMap<String, HashMap<String, Object>> {
                 params.put("index", index);
             }
         }
+    }
+
+    public JSONObject modelDump(boolean excludeNone) {
+        return JSONUtil.parseObj(this);
     }
 }

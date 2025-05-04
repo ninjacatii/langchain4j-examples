@@ -2,6 +2,7 @@ package dev.langchain4j.example.entity.dom.history_tree_processor._view;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 
 import java.util.HashMap;
@@ -11,6 +12,7 @@ import java.util.Map;
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @AllArgsConstructor
+@Builder
 public class DOMHistoryElement {
     private String tagName;
     private String xpath;
