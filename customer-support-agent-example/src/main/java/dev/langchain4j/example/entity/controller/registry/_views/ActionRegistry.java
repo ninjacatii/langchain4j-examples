@@ -19,7 +19,7 @@ import com.microsoft.playwright.Page;
 public class ActionRegistry {
     private Map<String, RegisteredAction> actions = new HashMap<>();
 
-    private static boolean matchDomains(List<String> domains, String url) {
+    public static boolean matchDomains(List<String> domains, String url) {
         if (domains == null || url == null || url.isEmpty()) {
             return true;
         }
@@ -40,7 +40,7 @@ public class ActionRegistry {
         }
     }
 
-    private static boolean matchPageFilter(Function<Page, Boolean> pageFilter, Page page) {
+    public static boolean matchPageFilter(Function<Page, Boolean> pageFilter, Page page) {
         if (pageFilter == null) {
             return true;
         }

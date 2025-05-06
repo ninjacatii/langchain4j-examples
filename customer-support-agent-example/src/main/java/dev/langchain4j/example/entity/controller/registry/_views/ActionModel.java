@@ -26,6 +26,22 @@ public class ActionModel extends HashMap<String, HashMap<String, Object>> {
         }
     }
 
+    public ActionModel getAction(String name, JSONObject paramValues) throws Exception {
+        if (!this.containsKey(name)) {
+            throw new Exception("action[" + name + "] isn't founded.");
+        }
+
+        var actionModel = new ActionModel();
+        var paras = new HashMap<String, Object>();
+        actionModel.put(name, paras);
+
+        HashMap<String, Object> map = this.get(name);
+        for (String key: map.keySet()) {
+            paras.put(key, paramValues.getOrDefault(key, null));
+        }
+        return actionModel;
+    }
+
     public JSONObject modelDump(boolean excludeNone) {
         return JSONUtil.parseObj(this);
     }

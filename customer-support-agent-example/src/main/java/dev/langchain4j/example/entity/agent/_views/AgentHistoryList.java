@@ -3,9 +3,11 @@ package dev.langchain4j.example.entity.agent._views;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -76,6 +78,30 @@ public class AgentHistoryList {
             List<ActionModel> lastAction = this.history.get(this.history.size() - 1).getModelOutput().getAction();
             if (lastAction != null) {
                 return lastAction.get(lastAction.size() - 1).modelDump(true);
+            }
+        }
+        return null;
+    }
+
+    public List<String> errors() {
+        var errors = new ArrayList<String>();
+        for (AgentHistory h: this.history) {
+            if (h.getResult() != null) {
+                for (ActionResult r: h.getResult()) {
+                    if (StrUtil.isNotBlank(r.getError())) {
+                        errors.add(r.getError());
+                    }
+                }
+            }
+        }
+        return errors;
+    }
+
+    public String finalResult() {
+        if (!CollUtil.isEmpty(this.history)) {
+            List<ActionResult> result = this.history.get(this.history.size() - 1).getResult();
+            if (result != null) {
+                return result.get(result.size() - 1).getExtractedContent();
             }
         }
         return null;

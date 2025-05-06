@@ -1,5 +1,7 @@
 package dev.langchain4j.example.entity.controller.registry._service;
 
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.StrUtil;
 import com.microsoft.playwright.Page;
 import dev.langchain4j.example.entity.agent._views.ActionResult;
 import dev.langchain4j.example.entity.browser._context.BrowserContext;
@@ -18,10 +20,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -44,41 +43,55 @@ public class Registry<T> {
         };
     }
 
-    private Function<Page, Boolean> getPageFilter(MethodHandles.Lookup lookup, String methodName) {
+    private Function<Page, Boolean> getPageFilter(String methodName) {
         try {
-            MethodHandle handle = lookup.findStatic(
-                    ActionPageFilters.class, methodName, MethodType.methodType(Boolean.class, Page.class)
-            );
-
-            return methodHandleToFunction(handle);
+            if (StrUtil.isBlank(methodName)) {
+                return null;
+            } else {
+                MethodHandles.Lookup lookup = MethodHandles.publicLookup();
+                MethodHandle handle = lookup.findStatic(
+                        ActionPageFilters.class, methodName, MethodType.methodType(Boolean.class, Page.class)
+                );
+                return methodHandleToFunction(handle);
+            }
         } catch (Exception e) {
-            log.error(e.getMessage());
+            log.info("No page filter method:" + methodName);
             return null;
         }
     }
 
+    //给个空的Registry
+    public Registry() {
+        excludeActions = null;
+
+    }
+
+    //默认Registry
     public Registry(List<String> excludeActions) {
         this.excludeActions = excludeActions != null ? excludeActions : new ArrayList<>();
 
         Class<?> actionsClass = Actions.class;
-        MethodHandles.Lookup lookup = MethodHandles.publicLookup();
         Method[] methods = actionsClass.getMethods();
 
         for (Method method : methods) {
             if (method.isAnnotationPresent(MethodToAction.class)) {
-                MethodToAction methodToAction = method.getAnnotation(MethodToAction.class);
-                RegisteredAction action = new RegisteredAction(
-                        method.getName(),
-                        methodToAction.description(),
-                        methodToAction.paraType(),
-                        methodToAction.paraName(),
-                        method,
-                        Arrays.stream(methodToAction.domains()).toList(),
-                        getPageFilter(lookup, method.getName() + "_PageFilter")
-                        );
-                this.registry.getActions().put(method.getName(), action);
+                registryAction(method);
             }
         }
+    }
+
+    public void registryAction(Method method) {
+        MethodToAction methodToAction = method.getAnnotation(MethodToAction.class);
+        RegisteredAction action = new RegisteredAction(
+                method.getName(),
+                methodToAction.description(),
+                methodToAction.paraType(),
+                methodToAction.paraName(),
+                method,
+                Arrays.stream(methodToAction.domains()).toList(),
+                getPageFilter(method.getName() + "_PageFilter")
+        );
+        this.registry.getActions().put(method.getName(), action);
     }
 
 
@@ -140,9 +153,21 @@ public class Registry<T> {
         }
     }
 
-    public Class<?> createActionModel(List<String> includeActions, Object page) {
-        // Dynamic model creation logic
-        return ActionModel.class; // Simplified for example
+    public ActionModel createActionModel(List<String> includeActions, Page page) {
+        var actionModel = new ActionModel();
+        for (String key: this.registry.getActions().keySet()) {
+            if (CollUtil.isEmpty(includeActions) || includeActions.contains(key)) {
+                RegisteredAction action = this.registry.getActions().get(key);
+                if (page == null || (ActionRegistry.matchPageFilter(action.pageFilter(), page) && ActionRegistry.matchDomains(action.domains(), page.url()))) {
+                    var map = new HashMap<String, Object>();
+                    for (String para: action.paraName()) {
+                        map.put(para, null);
+                    }
+                    actionModel.put(key, map);
+                }
+            }
+        }
+        return actionModel;
     }
 
     public String getPromptDescription(Page page) {
