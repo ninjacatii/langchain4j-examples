@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -14,6 +15,7 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.example.entity.controller.registry._views.ActionModel;
+import dev.langchain4j.example.entity.dom.history_tree_processor._view.DOMHistoryElement;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -123,7 +125,29 @@ public class AgentHistoryList {
         return this.history.stream().filter((h) -> StrUtil.isNotBlank(h.getState().getScreenshot())).map((h) -> h.getState().getScreenshot()).collect(Collectors.toList());
     }
 
-//    public model
+    public List<AgentOutput> modelOutputs() {
+        return this.history.stream().filter(h -> h.getModelOutput() != null).map(h -> h.getModelOutput()).toList();
+    }
+
+    public List<LinkedHashMap<String, Object>> modelActions() {
+        var outputs = new ArrayList<LinkedHashMap<String, Object>>();
+        for (AgentHistory h: this.history) {
+            if (h.getModelOutput() != null) {
+                for (int i = 0; i < h.getModelOutput().getAction().size(); i++) {
+                    ActionModel action = h.getModelOutput().getAction().get(i);
+                    DOMHistoryElement interactedElement = h.getState().getInteractedElement().get(i);
+                    var output = new LinkedHashMap<String, Object>();
+                    HashMap<String, HashMap<String, Object>> tmp = action.modelDump(true);
+                    for (String key: tmp.keySet()) {
+                        output.put(key, tmp.get(key));
+                    }
+                    output.put("interacted_element", interactedElement);
+                    outputs.add(output);
+                }
+            }
+        }
+        return outputs;
+    }
 
 
 }

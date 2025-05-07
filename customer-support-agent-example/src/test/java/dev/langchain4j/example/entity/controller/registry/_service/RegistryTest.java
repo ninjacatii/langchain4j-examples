@@ -1,6 +1,7 @@
 package dev.langchain4j.example.entity.controller.registry._service;
 
 import cn.hutool.core.thread.ThreadUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import dev.langchain4j.example.entity.agent._views.*;
@@ -158,10 +159,16 @@ class RegistryTest {
         assertEquals(List.of("screenshot1.png", "screenshot2.png", "screenshot3.png"), screenshots);
     }
 
-//    @Test
-//    public void testAllModelOutputs() throws Exception {
-//        AgentHistoryList sampleHistory = getSampleHistory(actionRegistry());
-//        sampleHistory.getModelActions();
-//    }
+    @Test
+    public void testAllModelOutputs() throws Exception {
+        AgentHistoryList sampleHistory = getSampleHistory(actionRegistry());
+        List<LinkedHashMap<String, Object>> outputs = sampleHistory.modelActions();
+        log.info(JSONUtil.toJsonStr(outputs.get(0).values().iterator().next()));
+        log.info(JSONUtil.toJsonStr(outputs.get(1).values().iterator().next()));
+        log.info(JSONUtil.toJsonStr(outputs.get(2).values().iterator().next()));
+//        assertEquals(Map.of("wait", Map.of("seconds", 1)), );
+//        assertEquals(Map.of("wait1", Map.of("seconds", 3)), outputs.get(1).values().iterator().next());
+//        assertEquals(Map.of("done", Map.of("text", "Task completed")), outputs.get(2).values().iterator().next());
+    }
 
 }
