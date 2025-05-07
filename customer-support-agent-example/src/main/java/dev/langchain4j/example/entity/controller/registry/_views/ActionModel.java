@@ -37,12 +37,17 @@ public class ActionModel extends HashMap<String, HashMap<String, Object>> {
 
         HashMap<String, Object> map = this.get(name);
         for (String key: map.keySet()) {
-            paras.put(key, paramValues.getOrDefault(key, null));
+            Object val = paramValues.getOrDefault(key, null);
+            if (val == null) {
+                paras.remove(key);
+            } else {
+                paras.put(key, val);
+            }
         }
         return actionModel;
     }
 
-    public JSONObject modelDump(boolean excludeNone) {
-        return JSONUtil.parseObj(this);
+    public HashMap<String, HashMap<String, Object>> modelDump(boolean excludeNone) {
+        return this;
     }
 }

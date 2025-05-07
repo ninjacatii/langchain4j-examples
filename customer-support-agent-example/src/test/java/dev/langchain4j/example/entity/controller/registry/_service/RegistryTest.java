@@ -15,10 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -121,21 +118,50 @@ class RegistryTest {
     @Test
     public void testLastModelOutput() throws Exception {
         AgentHistoryList sampleHistory = getSampleHistory(actionRegistry());
-        JSONObject lastOutput = sampleHistory.lastAction();
-        log.info(JSONUtil.toJsonStr(lastOutput));
+        HashMap<String, HashMap<String, Object>> lastAction = sampleHistory.lastAction();
+        assertEquals(Map.of("text", "Task completed"), lastAction.get("done"));
     }
 
     @Test
     public void testGetErrors() throws Exception {
         AgentHistoryList sampleHistory = getSampleHistory(actionRegistry());
         List<String> errors = sampleHistory.errors();
-        log.info(JSONUtil.toJsonStr(errors));
+        assertEquals(1, errors.size());
+        assertEquals("Failed to extract completely", errors.get(0));
     }
 
     @Test
     public void testFinalResult() throws Exception {
         AgentHistoryList sampleHistory = getSampleHistory(actionRegistry());
-        log.info(sampleHistory.finalResult());
+        assertEquals("Task completed", sampleHistory.finalResult());
     }
+
+    @Test
+    public void testIsDone() throws Exception {
+        AgentHistoryList sampleHistory = getSampleHistory(actionRegistry());
+        assertTrue(sampleHistory.isDone());
+    }
+
+    @Test
+    public void testUrls() throws Exception {
+        AgentHistoryList sampleHistory = getSampleHistory(actionRegistry());
+        List<String> urls = sampleHistory.urls();
+        assertTrue(urls.contains("https://example.com"));
+        assertTrue(urls.contains("https://example.com/page2"));
+    }
+
+    @Test
+    public void testAllScreenshots() throws Exception {
+        AgentHistoryList sampleHistory = getSampleHistory(actionRegistry());
+        List<String> screenshots = sampleHistory.screenshots();
+        assertEquals(3, screenshots.size());
+        assertEquals(List.of("screenshot1.png", "screenshot2.png", "screenshot3.png"), screenshots);
+    }
+
+//    @Test
+//    public void testAllModelOutputs() throws Exception {
+//        AgentHistoryList sampleHistory = getSampleHistory(actionRegistry());
+//        sampleHistory.getModelActions();
+//    }
 
 }

@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
@@ -73,7 +75,7 @@ public class AgentHistoryList {
         return null;
     }
 
-    public JSONObject lastAction() {
+    public HashMap<String, HashMap<String, Object>> lastAction() {
         if (this.history != null && this.history.get(this.history.size() - 1).getModelOutput() != null) {
             List<ActionModel> lastAction = this.history.get(this.history.size() - 1).getModelOutput().getAction();
             if (lastAction != null) {
@@ -106,4 +108,22 @@ public class AgentHistoryList {
         }
         return null;
     }
+
+    public List<String> urls() {
+        var result = new ArrayList<String>();
+        for (AgentHistory h: this.history) {
+            if (StrUtil.isNotBlank(h.getState().getUrl())) {
+                result.add(h.getState().getUrl());
+            }
+        }
+        return result;
+    }
+
+    public List<String> screenshots() {
+        return this.history.stream().filter((h) -> StrUtil.isNotBlank(h.getState().getScreenshot())).map((h) -> h.getState().getScreenshot()).collect(Collectors.toList());
+    }
+
+//    public model
+
+
 }

@@ -55,7 +55,7 @@ public class Registry<T> {
                 return methodHandleToFunction(handle);
             }
         } catch (Exception e) {
-            log.info("No page filter method:" + methodName);
+//            log.info("No page filter method:" + methodName);
             return null;
         }
     }
