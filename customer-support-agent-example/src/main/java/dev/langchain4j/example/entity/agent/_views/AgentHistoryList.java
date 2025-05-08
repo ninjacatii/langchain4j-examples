@@ -149,5 +149,21 @@ public class AgentHistoryList {
         return outputs;
     }
 
+    public List<LinkedHashMap<String, Object>> modelActionsFiltered(List<String> include) {
+        if (CollUtil.isEmpty(include)) {
+            include = new ArrayList<>();
+        }
+        List<LinkedHashMap<String, Object>> outputs = this.modelActions();
+        var result = new ArrayList<LinkedHashMap<String, Object>>();
+        for (LinkedHashMap<String, Object> o: outputs) {
+            for (String i: include) {
+                if (i.equals(o.keySet().iterator().next())) {
+                    result.add(o);
+                }
+            }
+        }
+        return result;
+    }
+
 
 }

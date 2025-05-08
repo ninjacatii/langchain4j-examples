@@ -171,4 +171,12 @@ class RegistryTest {
 //        assertEquals(Map.of("done", Map.of("text", "Task completed")), outputs.get(2).values().iterator().next());
     }
 
+    @Test
+    public void testAllModelOutputsFiltered() throws Exception {
+        AgentHistoryList sampleHistory = getSampleHistory(actionRegistry());
+        List<LinkedHashMap<String, Object>> filtered = sampleHistory.modelActionsFiltered(List.of("wait"));
+        assertEquals(filtered.size(), 1);
+        assertEquals(((Map<?, ?>) (filtered.get(0).get("wait"))).get("seconds"), 1);
+    }
+
 }
