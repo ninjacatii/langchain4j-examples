@@ -25,7 +25,7 @@ public class AgentHistoryList {
     private List<AgentHistory> history;
 
     public boolean isDone() {
-        if (this.history != null && this.history.get(this.history.size() - 1).getResult().size() > 0) {
+        if (!CollUtil.isEmpty(this.history) && this.history.get(this.history.size() - 1).getResult().size() > 0) {
             List<ActionResult> list = this.history.get(this.history.size() - 1).getResult();
             ActionResult lastResult = list.get(list.size() - 1);
             return lastResult.getIsDone();
@@ -78,7 +78,7 @@ public class AgentHistoryList {
     }
 
     public HashMap<String, HashMap<String, Object>> lastAction() {
-        if (this.history != null && this.history.get(this.history.size() - 1).getModelOutput() != null) {
+        if (!CollUtil.isEmpty(this.history) && this.history.get(this.history.size() - 1).getModelOutput() != null) {
             List<ActionModel> lastAction = this.history.get(this.history.size() - 1).getModelOutput().getAction();
             if (lastAction != null) {
                 return lastAction.get(lastAction.size() - 1).modelDump(true);

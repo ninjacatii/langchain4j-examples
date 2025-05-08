@@ -175,8 +175,17 @@ class RegistryTest {
     public void testAllModelOutputsFiltered() throws Exception {
         AgentHistoryList sampleHistory = getSampleHistory(actionRegistry());
         List<LinkedHashMap<String, Object>> filtered = sampleHistory.modelActionsFiltered(List.of("wait"));
-        assertEquals(filtered.size(), 1);
-        assertEquals(((Map<?, ?>) (filtered.get(0).get("wait"))).get("seconds"), 1);
+        assertEquals(1, filtered.size());
+        assertEquals(1, ((Map<?, ?>) (filtered.get(0).get("wait"))).get("seconds"));
+    }
+
+    @Test
+    public void testEmptyHistory() throws Exception {
+        AgentHistoryList emptyHistory = new AgentHistoryList(new ArrayList<>());
+        assertNull(emptyHistory.lastAction());
+        assertNull(emptyHistory.finalResult());
+        assertFalse(emptyHistory.isDone());
+        assertEquals(0, emptyHistory.urls().size());
     }
 
 }
