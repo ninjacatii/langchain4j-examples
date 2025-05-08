@@ -18,14 +18,12 @@ public class Browser {
     private Process chromeProcess;
 
     public Browser(BrowserConfig config) {
-        this.config = config != null ? config : new BrowserConfig();
+        this.config = config != null ? config : BrowserConfig.builder().build();
     }
 
-    public CompletableFuture<BrowserContext> newContext(BrowserContextConfig config) {
-        return CompletableFuture.supplyAsync(() -> {
-            BrowserContextConfig mergedConfig = mergeConfigs(config);
-            return new BrowserContext(this, mergedConfig, null);
-        });
+    public BrowserContext newContext(BrowserContextConfig config) {
+        BrowserContextConfig mergedConfig = mergeConfigs(config);
+        return new BrowserContext(this, mergedConfig, null);
     }
 
     private BrowserContextConfig mergeConfigs(BrowserContextConfig config) {

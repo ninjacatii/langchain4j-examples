@@ -188,4 +188,12 @@ class RegistryTest {
         assertEquals(0, emptyHistory.urls().size());
     }
 
+    @Test
+    public void testActionCreation() throws Exception {
+        var registry = actionRegistry();
+        ActionModel waitAction = registry.getAction("wait", JSONUtil.createObj().set("seconds", 1));
+
+        log.info(JSONUtil.toJsonStr(waitAction.modelDump(true)));
+    }
+
 }

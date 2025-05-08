@@ -1,12 +1,14 @@
 package dev.langchain4j.example.entity.browser._browser;
 
 import dev.langchain4j.example.entity.browser._context.BrowserContextConfig;
+import lombok.Builder;
 import lombok.Data;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Data
+@Builder
 public class BrowserConfig {
     private String wssUrl;
     private String cdpUrl;
