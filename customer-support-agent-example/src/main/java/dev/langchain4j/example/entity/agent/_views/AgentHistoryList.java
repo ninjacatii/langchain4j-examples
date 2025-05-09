@@ -3,10 +3,7 @@ package dev.langchain4j.example.entity.agent._views;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import cn.hutool.core.collection.CollUtil;
@@ -163,6 +160,29 @@ public class AgentHistoryList {
             }
         }
         return result;
+    }
+
+    public List<String> actionNames() {
+        var actionNames = new ArrayList<String>();
+        for (LinkedHashMap<String, Object> action: this.modelActions()) {
+            Set<String> actions = action.keySet();
+            if (!CollUtil.isEmpty(actions)) {
+                actionNames.add(actions.iterator().next());
+            }
+        }
+        return actionNames;
+    }
+
+    public List<String> extractedContent() {
+        var content = new ArrayList<String>();
+        for (AgentHistory h: this.history) {
+            content.addAll(h.getResult().stream()
+                    .map(ActionResult::getExtractedContent)
+                    .filter(StrUtil::isNotBlank)
+                    .toList());
+
+        }
+        return content;
     }
 
 

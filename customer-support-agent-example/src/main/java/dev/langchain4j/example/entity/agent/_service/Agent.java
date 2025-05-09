@@ -32,6 +32,7 @@ import dev.langchain4j.example.iface.NewStepCallbackFunction;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.example.entity.browser._browser.Browser;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.yaml.snakeyaml.util.Tuple;
 
@@ -73,6 +74,51 @@ public class Agent<T> {
     private ActionModel doneActionModel;
     private AgentOutput doneActionOutput;
     private Runnable verificationTask;
+
+    public Agent(String task,
+                 ChatLanguageModel llm,
+                 BrowserContext browserContext) {
+        this(task, llm, null, browserContext, new Controller(null), null, null, null, null, null,
+                AgentSettings.builder()
+                        .useVision(false)
+                        .useVisionForPlanner(false)
+                        .saveConversationPath(null)
+                        .saveConversationPathEncoding("utf-8")
+                        .maxFailures(3)
+                        .retryDelay(10)
+                        .overrideSystemMessage(null)
+                        .extendSystemMessage(null)
+                        .maxInputTokens(128000)
+                        .validateOutput(false)
+                        .messageContext(null)
+                        .generateGif(false)
+                        .availableFilePaths(null)
+                        .includeAttributes(Arrays.asList(
+                                "title",
+                                "type",
+                                "name",
+                                "role",
+                                "aria-label",
+                                "placeholder",
+                                "value",
+                                "alt",
+                                "aria-expanded",
+                                "data-date-format"
+                        ))
+                        .maxActionsPerStep(10)
+                        .toolCallingMethod("auto")
+                        .pageExtractionLlm(null)
+                        .plannerLlm(null)
+                        .plannerInterval(1)
+                        .isPlannerReasoning(false)
+                        .build(),
+                null,
+                null,
+                false,
+                10,
+                null
+        );
+    }
 
     public Agent(
             String task,
