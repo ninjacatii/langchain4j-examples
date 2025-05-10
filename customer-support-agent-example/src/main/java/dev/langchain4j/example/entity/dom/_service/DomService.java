@@ -76,7 +76,7 @@ public class DomService {
                 return Map.entry(
                         new DOMElementNode(
                                 "body", "", new HashMap<>(), new ArrayList<>(),
-                                false, null, null, null, null, null, null, null
+                                false, false, false, false, null, false, null, null
                         ),
                         new HashMap<>()
                 );

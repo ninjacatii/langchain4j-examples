@@ -36,12 +36,12 @@ public class DOMElementNode extends DOMBaseNode {
             String xpath,
             Map<String, String> attributes,
             List<DOMBaseNode> children,
-            Boolean isVisible,
-            Boolean isInteractive,
-            Boolean isTopElement,
-            Boolean isInViewport,
+            boolean isVisible,
+            boolean isInteractive,
+            boolean isTopElement,
+            boolean isInViewport,
             Integer highlightIndex,
-            Boolean shadowRoot,
+            boolean shadowRoot,
             DOMElementNode parent,
             ViewportInfo viewportInfo
     ) {

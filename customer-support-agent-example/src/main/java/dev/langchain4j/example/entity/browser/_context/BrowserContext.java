@@ -53,6 +53,8 @@ public class BrowserContext implements AutoCloseable {
         this.browser = browser;
         this.config = config != null ? config : BrowserContextConfig.builder().build();
         this.state = state != null ? state : new BrowserContextState();
+
+        this.initializeSession();
     }
 
     public BrowserSession initializeSession() {
