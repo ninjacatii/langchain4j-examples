@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 @Data
-public class Browser {
+public class Browser implements AutoCloseable {
     private final BrowserConfig config;
     private Playwright playwright;
     private com.microsoft.playwright.Browser playwrightBrowser;
@@ -28,7 +28,7 @@ public class Browser {
 
     private BrowserContextConfig mergeConfigs(BrowserContextConfig config) {
         // Merge browser and context configs
-        return config != null ? config : new BrowserContextConfig();
+        return config != null ? config : BrowserContextConfig.builder().build();
     }
 
     public com.microsoft.playwright.Browser getPlaywrightBrowser() {
@@ -102,26 +102,24 @@ public class Browser {
         return new ArrayList<>();
     }
 
-    public CompletableFuture<Void> close() {
-        return CompletableFuture.runAsync(() -> {
-            if (config.isKeepAlive()) return;
+    public void close() {
+        if (config.isKeepAlive()) return;
 
-            try {
-                if (playwrightBrowser != null) {
-                    playwrightBrowser.close();
-                }
-                if (playwright != null) {
-                    playwright.close();
-                }
-                if (chromeProcess != null) {
-                    chromeProcess.destroy();
-                }
-            } finally {
-                playwrightBrowser = null;
-                playwright = null;
-                chromeProcess = null;
-                System.gc();
+        try {
+            if (playwrightBrowser != null) {
+                playwrightBrowser.close();
             }
-        });
+            if (playwright != null) {
+                playwright.close();
+            }
+            if (chromeProcess != null) {
+                chromeProcess.destroy();
+            }
+        } finally {
+            playwrightBrowser = null;
+            playwright = null;
+            chromeProcess = null;
+            System.gc();
+        }
     }
 }

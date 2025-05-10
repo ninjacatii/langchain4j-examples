@@ -74,7 +74,7 @@ public class AgentHistoryList {
         return null;
     }
 
-    public HashMap<String, HashMap<String, Object>> lastAction() {
+    public JSONObject lastAction() {
         if (!CollUtil.isEmpty(this.history) && this.history.get(this.history.size() - 1).getModelOutput() != null) {
             List<ActionModel> lastAction = this.history.get(this.history.size() - 1).getModelOutput().getAction();
             if (lastAction != null) {
@@ -134,7 +134,7 @@ public class AgentHistoryList {
                     ActionModel action = h.getModelOutput().getAction().get(i);
                     DOMHistoryElement interactedElement = h.getState().getInteractedElement().get(i);
                     var output = new LinkedHashMap<String, Object>();
-                    HashMap<String, HashMap<String, Object>> tmp = action.modelDump(true);
+                    JSONObject tmp = action.modelDump(true);
                     for (String key: tmp.keySet()) {
                         output.put(key, tmp.get(key));
                     }

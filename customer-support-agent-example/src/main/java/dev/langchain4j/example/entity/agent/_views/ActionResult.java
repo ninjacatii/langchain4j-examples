@@ -11,9 +11,14 @@ import org.springframework.lang.Nullable;
 @AllArgsConstructor
 @Builder
 public class ActionResult {
+    @Builder.Default
     private Boolean isDone = false;
+    @Builder.Default
     private Boolean success = null;
+    @Builder.Default
     private String extractedContent = null;
+    @Builder.Default
     private String error = null;
+    @Builder.Default
     private boolean includeInMemory = false;
 }

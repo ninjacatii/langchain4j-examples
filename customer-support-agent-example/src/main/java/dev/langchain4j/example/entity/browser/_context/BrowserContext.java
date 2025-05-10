@@ -51,11 +51,11 @@ public class BrowserContext implements AutoCloseable {
 
     public BrowserContext(Browser browser, BrowserContextConfig config, BrowserContextState state) {
         this.browser = browser;
-        this.config = config != null ? config : new BrowserContextConfig();
+        this.config = config != null ? config : BrowserContextConfig.builder().build();
         this.state = state != null ? state : new BrowserContextState();
     }
 
-    private BrowserSession initializeSession() {
+    public BrowserSession initializeSession() {
         com.microsoft.playwright.Browser playwrightBrowser = this.browser.getPlaywrightBrowser();
         com.microsoft.playwright.BrowserContext context = this.createContext(playwrightBrowser);
         this.pageEventHandler = null;
@@ -160,8 +160,8 @@ public class BrowserContext implements AutoCloseable {
             options.setRecordHarPath(this.config.getSaveHarPath());
             options.setLocale(this.config.getLocale());
             options.setHttpCredentials(this.config.getHttpCredentials());
-            options.setIsMobile(this.config.getIsMobile());
-            options.setHasTouch(this.config.getHasTouch());
+            options.setIsMobile(this.config.isMobile());
+            options.setHasTouch(this.config.isHasTouch());
             options.setGeolocation(this.config.getGeolocation());
             options.setPermissions(this.config.getPermissions());
             options.setTimezoneId(this.config.getTimezoneId());

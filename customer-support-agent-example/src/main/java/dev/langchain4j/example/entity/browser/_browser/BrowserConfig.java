@@ -12,13 +12,20 @@ import java.util.List;
 public class BrowserConfig {
     private String wssUrl;
     private String cdpUrl;
+    @Builder.Default
     private String browserClass = "chromium";
     private String browserBinaryPath;
+    @Builder.Default
     private List<String> extraBrowserArgs = new ArrayList<>();
+    @Builder.Default
     private boolean headless = false;
+    @Builder.Default
     private boolean disableSecurity = false;
+    @Builder.Default
     private boolean deterministicRendering = false;
+    @Builder.Default
     private boolean keepAlive = false;
     private ProxySettings proxy;
-    private BrowserContextConfig newContextConfig = new BrowserContextConfig();
+    @Builder.Default
+    private BrowserContextConfig newContextConfig = BrowserContextConfig.builder().build();
 }

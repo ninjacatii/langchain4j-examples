@@ -47,7 +47,7 @@ public class ActionModel extends HashMap<String, HashMap<String, Object>> {
         return actionModel;
     }
 
-    public HashMap<String, HashMap<String, Object>> modelDump(boolean excludeNone) {
-        return this;
+    public JSONObject modelDump(boolean excludeNone) {
+        return JSONUtil.parseObj(this);
     }
 }

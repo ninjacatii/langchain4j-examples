@@ -119,7 +119,7 @@ class RegistryTest {
     @Test
     public void testLastModelOutput() throws Exception {
         AgentHistoryList sampleHistory = getSampleHistory(actionRegistry());
-        HashMap<String, HashMap<String, Object>> lastAction = sampleHistory.lastAction();
+        JSONObject lastAction = sampleHistory.lastAction();
         assertEquals(Map.of("text", "Task completed"), lastAction.get("done"));
     }
 

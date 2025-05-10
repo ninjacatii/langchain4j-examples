@@ -19,6 +19,7 @@ public class DOMHistoryElement {
     private Integer highlightIndex;
     private List<String> entireParentBranchPath;
     private Map<String, String> attributes;
+    @Builder.Default
     private boolean shadowRoot = false;
     private String cssSelector;
     private CoordinateSet pageCoordinates;

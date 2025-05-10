@@ -10,9 +10,13 @@ import java.util.Map;
 @Data
 @Builder
 public class MessageManagerSettings {
+    @Builder.Default
     private int maxInputTokens = 128000;
+    @Builder.Default
     private int estimatedCharactersPerToken = 3;
+    @Builder.Default
     private int imageTokens = 800;
+    @Builder.Default
     private List<String> includeAttributes = new ArrayList<>();
     private String messageContext;
     private Map<String, String> sensitiveData;
