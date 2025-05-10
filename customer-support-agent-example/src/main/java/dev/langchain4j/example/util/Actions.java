@@ -30,7 +30,7 @@ public class Actions {
         paraType = { String.class },
         paraName = { "query" }
     )
-    public static ActionResult searchGoogle(String query, BrowserContext browser) {
+    public static ActionResult search_google(String query, BrowserContext browser) {
         Page page = browser.getCurrentPage();
         page.navigate("https://cn.bing.com/search?q=" + query + "&ensearch=1'");
         String msg = "🔍  Searched for \"" + query + "\" in Bing";
@@ -43,7 +43,7 @@ public class Actions {
             paraType = { String.class },
             paraName = { "url" }
     )
-    public static ActionResult goToUrl(String url, BrowserContext browser) {
+    public static ActionResult go_to_url(String url, BrowserContext browser) {
         Page page = browser.getCurrentPage();
         page.navigate(url);
         page.waitForLoadState();
@@ -56,7 +56,7 @@ public class Actions {
             paraType = {  },
             paraName = {  }
     )
-    public static ActionResult goBack(BrowserContext browser) {
+    public static ActionResult go_back(BrowserContext browser) {
         browser.goBack();
         String msg = "🔙  Navigated back";
         log.info(msg);
@@ -80,7 +80,7 @@ public class Actions {
             paraType = { Integer.class, String.class },
             paraName = { "index", "xpath" }
     )
-    public static ActionResult clickElementByIndex(Integer index, String xpath, BrowserContext browser) throws Exception {
+    public static ActionResult click_clement_by_index(Integer index, String xpath, BrowserContext browser) throws Exception {
         BrowserSession session = browser.getSession();
 
         if (!browser.getSelectorMap().containsKey(index)) {
@@ -127,7 +127,7 @@ public class Actions {
             paraType = { Integer.class, String.class, String.class },
             paraName = { "index", "text", "xpath" }
     )
-    public static ActionResult inputText(Integer index, String text, String xpath, BrowserContext browser) throws Exception {
+    public static ActionResult input_text(Integer index, String text, String xpath, BrowserContext browser) throws Exception {
         if (!browser.getSelectorMap().containsKey(index)) {
             throw new Exception("Element with index " + index + " does not exist - retry or use alternative actions");
         }
@@ -145,7 +145,7 @@ public class Actions {
             paraType = {  },
             paraName = {  }
     )
-    public static ActionResult savePdf(BrowserContext browser) {
+    public static ActionResult save_pdf(BrowserContext browser) {
         Page page = browser.getCurrentPage();
         // 原始 Python 代码:
         // short_url = re.sub(r'^https?://(?:www\.)?|/$', '', page.url)

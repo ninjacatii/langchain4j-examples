@@ -12,9 +12,9 @@ import org.springframework.lang.Nullable;
 @Builder
 public class ActionResult {
     @Builder.Default
-    private Boolean isDone = false;
+    private boolean isDone = false;
     @Builder.Default
-    private Boolean success = null;
+    private boolean success = true;
     @Builder.Default
     private String extractedContent = null;
     @Builder.Default

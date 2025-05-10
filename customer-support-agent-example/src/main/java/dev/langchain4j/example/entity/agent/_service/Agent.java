@@ -553,7 +553,7 @@ public class Agent<T> {
                 parsed = null;
             }
         } else {
-            parsed = JSONUtil.toBean(JSONUtil.toJsonStr(response.get("parsed")), AgentOutput.class);
+            parsed = responseToAgentOutput(response);
         }
 
         if (parsed == null) {
@@ -575,6 +575,19 @@ public class Agent<T> {
             //logResponse(parsed);
         }
         return parsed;
+    }
+
+    private AgentOutput responseToAgentOutput(HashMap<String, Object> response) {
+        String str = ((ChatResponse)response.get("raw")).aiMessage().text();
+        String start = "```json";
+        if (str.startsWith(start)) {
+            str = str.substring(start.length());
+        }
+        String end = "```";
+        if (str.endsWith(end)) {
+            str = str.substring(0, str.length() - end.length());
+        }
+        return JSONUtil.toBean(str, AgentOutput.class);
     }
 
     private void logAgentRun() {

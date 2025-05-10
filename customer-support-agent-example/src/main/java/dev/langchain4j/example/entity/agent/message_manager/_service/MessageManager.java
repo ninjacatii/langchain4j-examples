@@ -6,10 +6,7 @@ import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.example.entity.agent._prompts.AgentMessagePrompt;
 import dev.langchain4j.example.entity.agent._views.ActionResult;
 import dev.langchain4j.example.entity.agent._views.AgentOutput;
@@ -166,7 +163,7 @@ public class MessageManager {
 
         AiMessage exampleToolCall = new AiMessage("", toolExecutionRequests);
         addMessageWithTokens(exampleToolCall, null, null);
-        addToolMessage("", null);
+        addToolMessage("waiting for tool invoking.", null);
     }
 
     public void addPlan(String plan, Integer position) {
@@ -211,7 +208,7 @@ public class MessageManager {
     }
 
     public void addToolMessage(String content, String messageType) {
-        ToolMessage msg = new ToolMessage(String.valueOf(this.state.getToolId()), content);
+        ToolExecutionResultMessage msg = new ToolExecutionResultMessage(String.valueOf(this.state.getToolId()), null, content);
         this.state.setToolId(this.state.getToolId() + 1);
         this.addMessageWithTokens(msg, null, messageType);
     }

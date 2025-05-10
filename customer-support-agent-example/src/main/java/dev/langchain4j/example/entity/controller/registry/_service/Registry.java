@@ -107,13 +107,12 @@ public class Registry<T> {
         }
 
         RegisteredAction action = registry.getActions().get(actionName);
+        String[] paraName = action.paraName();
+        Object[] validatedParams = validateParams(paraName, params, browser);
         try {
-            String[] paraName = action.paraName();
-            Object[] validatedParams = validateParams(paraName, params, browser);
-
             return (ActionResult)action.function().invoke(null, validatedParams);
         } catch (Exception e) {
-            throw new RuntimeException("Error executing action " + actionName, e);
+            return ActionResult.builder().success(false).error("Error executing action[" + actionName + "]:" + e.getMessage()).build();
         }
     }
 

@@ -135,6 +135,9 @@ public class OpenAiChatModelWithToolMessage implements ChatLanguageModel {
     public static Message toOpenAiMessage(ChatMessage message) {
         if (message instanceof SystemMessage) {
             return dev.langchain4j.model.openai.internal.chat.SystemMessage.from(((SystemMessage)message).text());
+        } else if (message instanceof dev.langchain4j.example.entity.agent.message_manager._service.ToolMessage) {
+            //TODO
+            return null;
         } else if (message instanceof UserMessage) {
             UserMessage userMessage = (UserMessage)message;
             return userMessage.hasSingleText() ? dev.langchain4j.model.openai.internal.chat.UserMessage.builder().content(userMessage.singleText()).name(userMessage.name()).build() : dev.langchain4j.model.openai.internal.chat.UserMessage.builder().content((List)userMessage.contents().stream().map(OpenAiChatModelWithToolMessage::toOpenAiContent).collect(Collectors.toList())).name(userMessage.name()).build();
