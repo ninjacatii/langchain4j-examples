@@ -18,7 +18,6 @@ import dev.langchain4j.example.entity.agent.message_manager._views.ManagedMessag
 import dev.langchain4j.example.entity.agent.message_manager._views.MessageManagerState;
 import dev.langchain4j.example.entity.agent.message_manager._views.MessageMetadata;
 import dev.langchain4j.example.entity.browser._views.BrowserState;
-import dev.langchain4j.model.openai.internal.chat.ToolMessage;
 import lombok.Data;
 
 
@@ -212,8 +211,8 @@ public class MessageManager {
     }
 
     public void addToolMessage(String content, String messageType) {
-//        ToolMessage msg = ToolMessage.from(String.valueOf(this.state.getToolId()), content);
-//        this.state.setToolId(this.state.getToolId() + 1);
-//        this.addMessageWithTokens(msg, null, messageType);
+        ToolMessage msg = new ToolMessage(String.valueOf(this.state.getToolId()), content);
+        this.state.setToolId(this.state.getToolId() + 1);
+        this.addMessageWithTokens(msg, null, messageType);
     }
 }
