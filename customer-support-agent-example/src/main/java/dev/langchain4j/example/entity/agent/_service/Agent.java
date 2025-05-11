@@ -31,6 +31,13 @@ import dev.langchain4j.example.exception.LLMException;
 import dev.langchain4j.example.iface.NewStepCallbackFunction;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.example.entity.browser._browser.Browser;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
@@ -487,6 +494,25 @@ public class Agent<T> {
         return inputMessages;
     }
 
+    private ResponseFormat getAgentOutputFormat() {
+        ResponseFormat responseFormat = ResponseFormat.builder()
+                .type(ResponseFormatType.JSON)
+                .jsonSchema(JsonSchema.builder()
+                        .name("Response")
+                        .rootElement(JsonObjectSchema.builder()
+                                .addProperty("currentState", JsonObjectSchema.builder()
+                                        .addStringProperty("evaluationPreviousGoal")
+                                        .addStringProperty("memory")
+                                        .addStringProperty("nextGoal")
+                                        .required("evaluationPreviousGoal", "memory", "nextGoal")
+                                        .build())
+                                .addProperty("action", JsonArraySchema.builder()
+                                        .items(JsonObjectSchema.builder().build()).build())
+                                .build()).build()
+                ).build();
+        return responseFormat;
+    }
+
     public AgentOutput getNextAction(List<ChatMessage> inputMessages) throws Exception {
         inputMessages = this.convertInputMessages(inputMessages);
 
@@ -514,7 +540,9 @@ public class Agent<T> {
             }
         } else if (this.toolCallingMethod == null) {
             try {
-                output = this.llm.chat(inputMessages);
+//                ChatRequest chatRequest = ChatRequest.builder().responseFormat(getAgentOutputFormat()).messages(inputMessages).build();
+                ChatRequest chatRequest = ChatRequest.builder().messages(inputMessages).build();
+                output = this.llm.chat(chatRequest);
                 response.put("raw", output);
                 response.put("parsed", null);
                 parsed = null;
@@ -595,17 +623,18 @@ public class Agent<T> {
         }
     }
 
-    private AgentOutput responseToAgentOutput(HashMap<String, Object> response) {
+    private AgentOutput responseToAgentOutput(HashMap<String, Object> response) throws Exception {
         String str = ((ChatResponse)response.get("raw")).aiMessage().text();
         String start = "```json";
-        if (str.startsWith(start)) {
-            str = str.substring(start.length());
-        }
+        str = str.substring(str.indexOf(start) + start.length());
         String end = "```";
-        if (str.endsWith(end)) {
-            str = str.substring(0, str.length() - end.length());
+        str = str.substring(0, str.lastIndexOf(end));
+        if (JSONUtil.isTypeJSONObject(str)) {
+            return JSONUtil.toBean(str, AgentOutput.class);
+        } else {
+            log.error("responseToAgentOutput error, text:" + ((ChatResponse)response.get("raw")).aiMessage().text());
+            throw new Exception("responseToAgentOutput");
         }
-        return JSONUtil.toBean(str, AgentOutput.class);
     }
 
     private void logAgentRun() {

@@ -8,7 +8,12 @@ import java.util.Map;
 
 @Slf4j
 public class Utils {
-    public static JSONObject extractJsonFromModelOutput(String content) {
+    public static JSONObject extractJsonFromModelOutput(String content) throws Exception {
+        String start = "```json";
+        content = content.substring(content.indexOf(start) + start.length());
+        String end = "```";
+        content = content.substring(0, content.lastIndexOf(end));
+
         // 处理代码块包裹的情况
         if (content.contains("```")) {
             String[] codeBlocks = content.split("```");
@@ -23,7 +28,11 @@ public class Utils {
                 }
             }
         }
-
-        return JSONUtil.parseObj(content);
+        if (JSONUtil.isTypeJSONObject(content)) {
+            return JSONUtil.parseObj(content);
+        } else {
+            log.error("JSONUtil.parseObj error, content:" + content);
+            throw new Exception("JSONUtil.parseObj error");
+        }
     }
 }
