@@ -20,7 +20,7 @@ public class BrowserConfig {
     @Builder.Default
     private boolean headless = false;
     @Builder.Default
-    private boolean disableSecurity = false;
+    private boolean disableSecurity = true;
     @Builder.Default
     private boolean deterministicRendering = false;
     @Builder.Default

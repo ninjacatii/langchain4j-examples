@@ -410,12 +410,12 @@ public class Agent<T> {
                 throw e;
             }
 
-            List<ActionResult> result1 = this.multiAct(modelOutput.getAction(), true);
+            result = this.multiAct(modelOutput.getAction(), true);
 
-            this.state.setLastResult(result1);
+            this.state.setLastResult(result);
 
-            if (!result1.isEmpty() && result1.get(result1.size() - 1).getIsDone()) {
-                log.info("📄 Result: " + result1.get(result1.size() - 1).getExtractedContent());
+            if (!result.isEmpty() && result.get(result.size() - 1).isDone()) {
+                log.info("📄 Result: " + result.get(result.size() - 1).getExtractedContent());
             }
 
             this.state.setConsecutiveFailures(0);
@@ -424,7 +424,6 @@ public class Agent<T> {
             this.state.setLastResult(result);
         } finally {
             DateTime stepEndTime = DateUtil.date();
-            List<ActionModel> actions = modelOutput.getAction();
             if (result == null) {
                 return;
             }

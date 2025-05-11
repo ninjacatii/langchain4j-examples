@@ -13,11 +13,10 @@ public class AgentState {
     private String agentId = UUID.randomUUID().toString();
     private int nSteps = 1;
     private int consecutiveFailures = 0;
-    @Nullable
-    private List<ActionResult> lastResult;
-    private AgentHistoryList history;
+    @Nullable private List<ActionResult> lastResult;
+    private AgentHistoryList history = new AgentHistoryList(new ArrayList<AgentHistory>());
     @Nullable private String lastPlan;
-    private boolean paused;
-    private boolean stopped;
+    private boolean paused = false;
+    private boolean stopped = false;
     private MessageManagerState messageManagerState;
 }

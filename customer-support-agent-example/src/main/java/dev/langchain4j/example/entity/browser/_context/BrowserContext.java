@@ -373,7 +373,7 @@ public class BrowserContext implements AutoCloseable {
             }
 
             // Skip if response is too large (likely not essential for page load)
-            String contentLength = response.headers().get("content-type");
+            String contentLength = response.headers().get("content-length");
             if (contentLength != null && Integer.parseInt(contentLength) > 5 * 1024 * 1024) {
                 pendingRequests.remove(request);
                 return;

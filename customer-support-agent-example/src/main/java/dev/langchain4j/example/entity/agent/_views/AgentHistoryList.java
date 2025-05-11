@@ -25,7 +25,7 @@ public class AgentHistoryList {
         if (!CollUtil.isEmpty(this.history) && this.history.get(this.history.size() - 1).getResult().size() > 0) {
             List<ActionResult> list = this.history.get(this.history.size() - 1).getResult();
             ActionResult lastResult = list.get(list.size() - 1);
-            return lastResult.getIsDone();
+            return lastResult.isDone();
         }
         return false;
     }
@@ -63,15 +63,15 @@ public class AgentHistoryList {
         return mapper.readValue(json, AgentHistoryList.class);
     }
 
-    public Boolean isSuccessful() {
+    public boolean isSuccessful() {
         if (!CollUtil.isEmpty(this.history) && !this.history.get(this.history.size() - 1).getResult().isEmpty()) {
             List<ActionResult> list = this.history.get(this.history.size() - 1).getResult();
             ActionResult lastResult = list.get(list.size() - 1);
-            if (lastResult.getIsDone()) {
-                return lastResult.getSuccess();
+            if (lastResult.isDone()) {
+                return lastResult.isSuccess();
             }
         }
-        return null;
+        return false;
     }
 
     public JSONObject lastAction() {

@@ -39,9 +39,11 @@ public class Controller<T> {
                     context
             );
             if (result == null) {
-                return new ActionResult(false, null, null, null, false);
+                return new ActionResult(false, false, null, null, false);
+            } else {
+                return result;
             }
         }
-        return new ActionResult(false, null, null, null, false);
+        return new ActionResult(false, false, null, null, false);
     }
 }

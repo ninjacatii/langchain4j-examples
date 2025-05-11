@@ -77,12 +77,13 @@ public class Browser implements AutoCloseable {
 
     private com.microsoft.playwright.Browser setupBuiltinBrowser() {
         BrowserType browserType = getBrowserClass();
-        List<String> args = getBrowserArgs();
+        //IN_DOCKER以后要写在配置文件中，现在暂时先全设为false
+        List<String> args = getBrowserArgs(config.isHeadless(), false, config.isDisableSecurity());
 
         return browserType.launch(new BrowserType.LaunchOptions()
                 .setHeadless(config.isHeadless())
                 .setArgs(args)
-                .setProxy(String.valueOf(config.getProxy()))
+                //.setProxy(null)
                 .setHandleSIGTERM(false)
                 .setHandleSIGINT(false));
     }
@@ -96,10 +97,8 @@ public class Browser implements AutoCloseable {
         }
     }
 
-    private List<String> getBrowserArgs() {
-        // Build browser args based on config
-        // Similar to Python version's CHROME_ARGS etc.
-        return new ArrayList<>();
+    private List<String> getBrowserArgs(boolean headless, boolean docker, boolean disableSecurity) {
+        return ChromeConfig.getAllArgs(headless, docker, disableSecurity);
     }
 
     public void close() {

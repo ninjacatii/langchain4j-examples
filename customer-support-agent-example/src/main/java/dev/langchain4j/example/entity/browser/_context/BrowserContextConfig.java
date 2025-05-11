@@ -20,7 +20,7 @@ public class BrowserContextConfig {
     @Builder.Default
     private float waitForNetworkIdlePageLoadTime = 0.5f;
     @Builder.Default
-    private float maximumWaitPageLoadTime = 5;
+    private float maximumWaitPageLoadTime = 50;
     @Builder.Default
     private float waitBetweenActions = 0.5f;
     @Builder.Default

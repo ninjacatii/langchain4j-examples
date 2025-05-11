@@ -29,7 +29,7 @@ public class TestAgentActions {
 
     @BeforeEach
     void setup() {
-        BrowserConfig config = BrowserConfig.builder().headless(true).build();
+        BrowserConfig config = BrowserConfig.builder().headless(false).build();
         this.browser = new Browser(config);
         this.context = browser.newContext(null);
         llm = OpenAiChatModel.builder()
@@ -53,7 +53,7 @@ public class TestAgentActions {
     @Disabled("Expensive to run")
     void testEcommerceInteraction() {
         Agent agent = new Agent(
-                "Go to amazon.com, search for 'laptop', filter by 4+ stars, and find the price of the first result",
+                "Go to taobao.com, search for 'laptop', filter by 4+ stars, and find the price of the first result",
                 llm,
                 context);
 

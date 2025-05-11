@@ -8,8 +8,11 @@ import dev.langchain4j.example.entity.dom._views.DOMElementNode;
 import dev.langchain4j.example.entity.dom._views.DOMState;
 import dev.langchain4j.example.entity.dom._views.DOMTextNode;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.StreamUtils;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -27,9 +30,8 @@ public class DomService {
 
     public DomService(Page page) {
         this.page = page;
-        try {
-            Path jsPath = Paths.get("src/main/resources/browser_use/dom/buildDomTree.js");
-            this.jsCode = Files.readString(jsPath);
+        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream("system_prompt.md")) {
+            this.jsCode = StreamUtils.copyToString(inputStream, StandardCharsets.UTF_8);
         } catch (IOException e) {
             log.error("Failed to load buildDomTree.js: " + e.getMessage());
             this.jsCode = "";

@@ -112,6 +112,7 @@ public class Registry<T> {
         try {
             return (ActionResult)action.function().invoke(null, validatedParams);
         } catch (Exception e) {
+            log.error("Error executing action[" + actionName + "]:" + e.getMessage(), e);
             return ActionResult.builder().success(false).error("Error executing action[" + actionName + "]:" + e.getMessage()).build();
         }
     }
