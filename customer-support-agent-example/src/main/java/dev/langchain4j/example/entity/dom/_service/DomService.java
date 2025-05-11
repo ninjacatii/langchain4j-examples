@@ -1,5 +1,6 @@
 package dev.langchain4j.example.entity.dom._service;
 
+import cn.hutool.core.convert.Convert;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.PlaywrightException;
@@ -9,6 +10,7 @@ import dev.langchain4j.example.entity.dom._views.DOMState;
 import dev.langchain4j.example.entity.dom._views.DOMTextNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StreamUtils;
+import org.yaml.snakeyaml.util.Tuple;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,7 +32,7 @@ public class DomService {
 
     public DomService(Page page) {
         this.page = page;
-        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream("system_prompt.md")) {
+        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream("buildDomTree.js")) {
             this.jsCode = StreamUtils.copyToString(inputStream, StandardCharsets.UTF_8);
         } catch (IOException e) {
             log.error("Failed to load buildDomTree.js: " + e.getMessage());
@@ -88,7 +90,7 @@ public class DomService {
             args.put("doHighlightElements", highlightElements);
             args.put("focusHighlightIndex", focusElement);
             args.put("viewportExpansion", viewportExpansion);
-            args.put("debugMode", true);
+            args.put("debugMode", false);
 
             Map<String, Object> evalResult = (Map)page.evaluate(jsCode, args);
             return constructDomTree(evalResult);
@@ -106,20 +108,20 @@ public class DomService {
         Map<String, DOMBaseNode> nodeMap = new HashMap<>();
 
         jsNodeMap.forEach((id, nodeData) -> {
-            Map.Entry<DOMBaseNode, List<String>> parsedNode = parseNode(nodeData);
-            if (parsedNode.getKey() == null) {
+            Tuple<DOMBaseNode, List<String>> parsedNode = parseNode(nodeData);
+            if (parsedNode._1() == null) {
                 return;
             }
 
-            nodeMap.put(id, parsedNode.getKey());
+            nodeMap.put(id, parsedNode._1());
 
-            if (parsedNode.getKey() instanceof DOMElementNode) {
-                DOMElementNode elementNode = (DOMElementNode) parsedNode.getKey();
+            if (parsedNode._1() instanceof DOMElementNode) {
+                DOMElementNode elementNode = (DOMElementNode) parsedNode._1();
                 if (elementNode.getHighlightIndex() != null) {
                     selectorMap.put(elementNode.getHighlightIndex(), elementNode);
                 }
 
-                parsedNode.getValue().forEach(childId -> {
+                parsedNode._2().forEach(childId -> {
                     DOMBaseNode childNode = nodeMap.get(childId);
                     if (childNode != null) {
                         childNode.setParent(elementNode);
@@ -137,9 +139,9 @@ public class DomService {
         return Map.entry(rootNode, selectorMap);
     }
 
-    private Map.Entry<DOMBaseNode, List<String>> parseNode(Map<String, Object> nodeData) {
+    private Tuple<DOMBaseNode, List<String>> parseNode(Map<String, Object> nodeData) {
         if (nodeData == null || nodeData.isEmpty()) {
-            return Map.entry(null, new ArrayList<>());
+            return new Tuple<>(null, new ArrayList<>());
         }
 
         // Handle text nodes
@@ -149,7 +151,7 @@ public class DomService {
                     (boolean) nodeData.getOrDefault("isVisible", false),
                     null
             );
-            return Map.entry(textNode, new ArrayList<>());
+            return new Tuple<>(textNode, new ArrayList<>());
         }
 
         // Handle element nodes
@@ -157,8 +159,8 @@ public class DomService {
         if (nodeData.containsKey("viewport")) {
             Map<String, Object> viewportData = (Map<String, Object>) nodeData.get("viewport");
             viewportInfo = new ViewportInfo(
-                    ((Number) viewportData.get("width")).intValue(),
-                    ((Number) viewportData.get("height")).intValue()
+                    Convert.toInt(viewportData.get("width")),
+                    Convert.toInt(viewportData.get("height"))
             );
         }
 
@@ -174,11 +176,11 @@ public class DomService {
                 nodeData.containsKey("highlightIndex") ? ((Number) nodeData.get("highlightIndex")).intValue() : null,
                 (boolean) nodeData.getOrDefault("shadowRoot", false),
                 null,
-                new dev.langchain4j.example.entity.dom.history_tree_processor._view.ViewportInfo(0, 0, viewportInfo.getWidth(), viewportInfo.getHeight())
+                viewportInfo == null ? null : new dev.langchain4j.example.entity.dom.history_tree_processor._view.ViewportInfo(0, 0, viewportInfo.getWidth(), viewportInfo.getHeight())
         );
 
         List<String> childrenIds = (List<String>) nodeData.getOrDefault("children", new ArrayList<>());
-        return Map.entry(elementNode, childrenIds);
+        return new Tuple<>(elementNode, childrenIds);
     }
 
     private boolean isCrossOrigin(String url) {

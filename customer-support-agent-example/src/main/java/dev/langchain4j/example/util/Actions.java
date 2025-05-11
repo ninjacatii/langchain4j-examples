@@ -32,7 +32,7 @@ public class Actions {
             paraType = { String.class, Boolean.class },
             paraName = { "text", "success" }
     )
-    public static ActionResult done(String text, Boolean success, BrowserContext browser) {
+    public static ActionResult done(String text, Boolean success, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
         return ActionResult.builder().isDone(true).success(success).extractedContent(text).build();
     }
 
@@ -41,7 +41,7 @@ public class Actions {
         paraType = { String.class },
         paraName = { "query" }
     )
-    public static ActionResult search_google(String query, BrowserContext browser) {
+    public static ActionResult search_google(String query, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
         Page page = browser.getCurrentPage();
         page.navigate("https://cn.bing.com/search?q=" + query + "&ensearch=1'");
         String msg = "🔍  Searched for \"" + query + "\" in Bing";
@@ -54,7 +54,7 @@ public class Actions {
             paraType = { String.class },
             paraName = { "url" }
     )
-    public static ActionResult go_to_url(String url, BrowserContext browser) {
+    public static ActionResult go_to_url(String url, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
         Page page = browser.getCurrentPage();
         page.navigate(url);
         page.waitForLoadState();
@@ -67,7 +67,7 @@ public class Actions {
             paraType = {  },
             paraName = {  }
     )
-    public static ActionResult go_back(BrowserContext browser) {
+    public static ActionResult go_back(BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
         browser.goBack();
         String msg = "🔙  Navigated back";
         log.info(msg);
@@ -79,7 +79,7 @@ public class Actions {
             paraType = { Integer.class },
             paraName = { "seconds" }
     )
-    public static ActionResult wait(Integer seconds, BrowserContext browser) {
+    public static ActionResult wait(Integer seconds, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
         String msg = "🕒  Waiting for {seconds} seconds";
         log.info(msg);
         ThreadUtil.sleep(seconds, TimeUnit.SECONDS);
@@ -91,7 +91,7 @@ public class Actions {
             paraType = { Integer.class, String.class },
             paraName = { "index", "xpath" }
     )
-    public static ActionResult click_clement_by_index(Integer index, String xpath, BrowserContext browser) throws Exception {
+    public static ActionResult click_clement_by_index(Integer index, String xpath, BrowserContext browser, ChatLanguageModel pageExtractionLlm) throws Exception {
         BrowserSession session = browser.getSession();
 
         if (!browser.getSelectorMap().containsKey(index)) {
@@ -138,7 +138,7 @@ public class Actions {
             paraType = { Integer.class, String.class, String.class },
             paraName = { "index", "text", "xpath" }
     )
-    public static ActionResult input_text(Integer index, String text, String xpath, BrowserContext browser) throws Exception {
+    public static ActionResult input_text(Integer index, String text, String xpath, BrowserContext browser, ChatLanguageModel pageExtractionLlm) throws Exception {
         if (!browser.getSelectorMap().containsKey(index)) {
             throw new Exception("Element with index " + index + " does not exist - retry or use alternative actions");
         }
@@ -156,7 +156,7 @@ public class Actions {
             paraType = {  },
             paraName = {  }
     )
-    public static ActionResult save_pdf(BrowserContext browser) {
+    public static ActionResult save_pdf(BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
         Page page = browser.getCurrentPage();
         // 原始 Python 代码:
         // short_url = re.sub(r'^https?://(?:www\.)?|/$', '', page.url)
@@ -184,7 +184,7 @@ public class Actions {
             paraType = { Integer.class },
             paraName = { "pageId" }
     )
-    public static ActionResult switch_tab(Integer pageId, BrowserContext browser) {
+    public static ActionResult switch_tab(Integer pageId, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
         browser.switchToTab(pageId);
 
         Page page = browser.getCurrentPage();
@@ -199,7 +199,7 @@ public class Actions {
             paraType = { String.class },
             paraName = { "url" }
     )
-    public static ActionResult open_tab(String url, BrowserContext browser) {
+    public static ActionResult open_tab(String url, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
         browser.createNewTab(url);
         String msg = "🔗  Opened new tab with " + url;
         log.info(msg);
@@ -211,7 +211,7 @@ public class Actions {
             paraType = { Integer.class },
             paraName = { "pageId" }
     )
-    public static ActionResult close_tab(Integer pageId, BrowserContext browser) {
+    public static ActionResult close_tab(Integer pageId, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
         browser.switchToTab(pageId);
         Page page = browser.getCurrentPage();
         String url = page.url();

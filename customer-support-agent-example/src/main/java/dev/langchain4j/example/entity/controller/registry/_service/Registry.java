@@ -108,7 +108,7 @@ public class Registry<T> {
 
         RegisteredAction action = registry.getActions().get(actionName);
         String[] paraName = action.paraName();
-        Object[] validatedParams = validateParams(paraName, params, browser);
+        Object[] validatedParams = validateParams(paraName, params, browser, pageExtractionLlm);
         try {
             return (ActionResult)action.function().invoke(null, validatedParams);
         } catch (Exception e) {
@@ -117,8 +117,8 @@ public class Registry<T> {
         }
     }
 
-    private Object[] validateParams(String[] paraName, Map<String, Object> params, BrowserContext browser) {
-        var result = new Object[paraName.length + 1];
+    private Object[] validateParams(String[] paraName, Map<String, Object> params, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
+        var result = new Object[paraName.length + 2];
         for (int i = 0; i < paraName.length; i++) {
             String name = paraName[i];
             if (params.containsKey(name)) {
@@ -128,7 +128,8 @@ public class Registry<T> {
                 result[i] = null;
             }
         }
-        result[result.length - 1] = browser;
+        result[result.length - 2] = browser;
+        result[result.length - 1] = pageExtractionLlm;
         return result;
     }
 

@@ -20,11 +20,13 @@ public class ClickableElementProcessor {
     public static List<DOMElementNode> getClickableElements(DOMElementNode domElement) {
         List<DOMElementNode> clickableElements = new ArrayList<>();
         for (DOMBaseNode child : domElement.getChildren()) {
-            DOMElementNode child1 = (DOMElementNode)child;
-            if (child1.getHighlightIndex() != null) {
-                clickableElements.add(child1);
+            if (child instanceof DOMElementNode) {
+                DOMElementNode child1 = (DOMElementNode)child;
+                if (child1.getHighlightIndex() != null) {
+                    clickableElements.add(child1);
+                }
+                clickableElements.addAll(getClickableElements(child1));
             }
-            clickableElements.addAll(getClickableElements(child1));
         }
         return clickableElements;
     }

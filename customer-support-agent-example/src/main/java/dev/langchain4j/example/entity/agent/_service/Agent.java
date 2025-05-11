@@ -420,6 +420,7 @@ public class Agent<T> {
 
             this.state.setConsecutiveFailures(0);
         } catch (Exception e) {
+            log.error("step error:{}", e.getMessage(), e);
             result = this.handleStepError(e);
             this.state.setLastResult(result);
         } finally {
@@ -570,10 +571,28 @@ public class Agent<T> {
             parsed.setAction(CollUtil.split(parsed.getAction(), this.settings.getMaxActionsPerStep()).get(0));
         }
 
-        if (this.state.isPaused() && this.state.isStopped()) {
-            //logResponse(parsed);
+        if (!(this.state.isPaused() || this.state.isStopped())) {
+            logResponse(parsed);
         }
         return parsed;
+    }
+
+    private void logResponse(AgentOutput response) {
+        String emoji = "";
+        if (response.getCurrentState().getEvaluationPreviousGoal().indexOf("Success") >= 0) {
+            emoji = "👍";
+        } else if (response.getCurrentState().getEvaluationPreviousGoal().indexOf("Failed") >= 0) {
+            emoji = "⚠";
+        } else {
+            emoji = "🤷";
+        }
+        log.info("{} Eval: {}", emoji, response.getCurrentState().getEvaluationPreviousGoal());
+        log.info("🧠 Memory: {}", response.getCurrentState().getMemory());
+        log.info("🎯 Next goal: {}", response.getCurrentState().getNextGoal());
+        for (int i = 0; i < response.getAction().size(); i++) {
+            ActionModel action = response.getAction().get(i);
+            log.info("🛠️  Action {}/{}: {}", i + 1, response.getAction().size(), action.modelDump(true).toString());
+        }
     }
 
     private AgentOutput responseToAgentOutput(HashMap<String, Object> response) {

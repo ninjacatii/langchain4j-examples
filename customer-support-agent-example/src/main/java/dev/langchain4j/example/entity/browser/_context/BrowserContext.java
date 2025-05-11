@@ -400,8 +400,8 @@ public class BrowserContext implements AutoCloseable {
                 }
             }
         } finally {
-            page.onRequest(null);
-            page.onResponse(null);
+            page.offRequest(onRequest);
+            page.offResponse(onResponse);
         }
     }
 
@@ -609,7 +609,7 @@ public class BrowserContext implements AutoCloseable {
                 List<DOMElementNode> updatedStateClickableElements = ClickableElementProcessor.getClickableElements(updatedState.getElementTree());
 
                 for (DOMElementNode domElementNode : updatedStateClickableElements) {
-                    domElementNode.setIsNew(!session.getCachedStateClickableElementsHashes().getHashes().contains(ClickableElementProcessor.hashDomElement(domElementNode)));
+                    domElementNode.setNew(!session.getCachedStateClickableElementsHashes().getHashes().contains(ClickableElementProcessor.hashDomElement(domElementNode)));
                 }
             }
             var tmp = new CachedStateClickableElementsHashes();
@@ -646,7 +646,7 @@ public class BrowserContext implements AutoCloseable {
         try {
             this.removeHighlights();
             DomService domService = new DomService(page);
-            DOMState content = domService.getClickableElements(this.config.isHighlightElements(), this.config.getViewportExpansion(), focusElement);
+            DOMState content = domService.getClickableElements(this.config.isHighlightElements(), focusElement, this.config.getViewportExpansion());
             List<TabInfo> tabsInfo = this.getTabsInfo();
             String screenshotB64 = this.takeScreenshot(false);
             Tuple<Integer, Integer> tuple = this.getScrollInfo(page);

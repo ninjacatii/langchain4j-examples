@@ -1,5 +1,6 @@
 package dev.langchain4j.example.entity.dom._views;
 
+import cn.hutool.core.util.StrUtil;
 import dev.langchain4j.example.entity.dom.history_tree_processor._service.HistoryTreeProcessor;
 import dev.langchain4j.example.entity.dom.history_tree_processor._view.CoordinateSet;
 import dev.langchain4j.example.entity.dom.history_tree_processor._view.HashedDomElement;
@@ -29,7 +30,7 @@ public class DOMElementNode extends DOMBaseNode {
     private CoordinateSet viewportCoordinates; // Nullable
     private CoordinateSet pageCoordinates; // Nullable
     private ViewportInfo viewportInfo; // Nullable
-    private Boolean isNew; // Nullable
+    private boolean isNew; // Nullable
 
     public DOMElementNode(
             String tagName,
@@ -115,43 +116,43 @@ public class DOMElementNode extends DOMBaseNode {
     }
 
     public String clickableElementsToString(List<String> includeAttributes) {
-        StringBuilder builder = new StringBuilder();
-        processNode(this, 0, includeAttributes, builder);
-        return builder.toString();
+        var formattedText = new ArrayList<String>();
+        processNode(this, 0, includeAttributes, formattedText);
+        return StrUtil.join("\n", formattedText);
     }
 
-    private void processNode(DOMBaseNode node, int depth, List<String> includeAttributes, StringBuilder builder) {
+    private void processNode(DOMBaseNode node, int depth, List<String> includeAttributes, List<String> formattedText) {
+        int nextDepth = depth;
+        String depthStr = "\t".repeat(depth);
+
         if (node instanceof DOMElementNode) {
             DOMElementNode elementNode = (DOMElementNode) node;
             if (elementNode.getHighlightIndex() != null) {
+                nextDepth += 1;
+
                 String text = elementNode.getAllTextTillNextClickableElement(-1);
                 String attributesStr = buildAttributesString(elementNode, includeAttributes, text);
 
-                builder.append("\t".repeat(depth))
-                        .append(elementNode.isNew ? "*[" : "[")
-                        .append(elementNode.getHighlightIndex())
-                        .append(elementNode.isNew ? "]*" : "]")
-                        .append("<")
-                        .append(elementNode.getTagName());
-
-                if (!attributesStr.isEmpty()) {
-                    builder.append(" ").append(attributesStr);
+                String highlightIndicator = (elementNode.isNew ? "*[" : "[") + elementNode.getHighlightIndex() + (elementNode.isNew ? "]*" : "]");
+                String line = depthStr + highlightIndicator + "<" + elementNode.getTagName();
+                if (StrUtil.isNotBlank(attributesStr)) {
+                    line += " " + attributesStr;
                 }
 
-                if (!text.isEmpty()) {
-                    if (attributesStr.isEmpty()) {
-                        builder.append(" ");
+                if (StrUtil.isNotBlank(text)) {
+                    if (StrUtil.isBlank(attributesStr)) {
+                        line += " ";
                     }
-                    builder.append(">").append(text);
-                } else if (attributesStr.isEmpty()) {
-                    builder.append(" ");
+                    line += ">" + text;
+                } else if (StrUtil.isBlank(attributesStr)) {
+                    line += " ";
                 }
-
-                builder.append(" />\n");
+                line += " />";
+                formattedText.add(line);
             }
 
             for (DOMBaseNode child : elementNode.getChildren()) {
-                processNode(child, depth + 1, includeAttributes, builder);
+                processNode(child, nextDepth, includeAttributes, formattedText);
             }
         } else if (node instanceof DOMTextNode) {
             DOMTextNode textNode = (DOMTextNode) node;
@@ -159,9 +160,7 @@ public class DOMElementNode extends DOMBaseNode {
                     && textNode.getParent() != null
                     && textNode.getParent().isVisible()
                     && textNode.getParent().isTopElement()) {
-                builder.append("\t".repeat(depth))
-                        .append(textNode.getText())
-                        .append("\n");
+                formattedText.add(depthStr + textNode.getText());
             }
         }
     }
@@ -175,11 +174,17 @@ public class DOMElementNode extends DOMBaseNode {
         for (String attr : includeAttributes) {
             if (node.getAttributes().containsKey(attr)) {
                 String value = node.getAttributes().get(attr);
-                if (!(node.getTagName().equals("role") && attr.equals("role")) &&
-                        !(attr.equals("aria-label") && value != null && value.trim().equals(text.trim())) &&
-                        !(attr.equals("placeholder") && value != null && value.trim().equals(text.trim()))) {
-                    filteredAttrs.put(attr, value);
+
+                if ("role".equals(attr) && node.getTagName().equals(value)) {
+                    continue;
                 }
+                if ("aria-label".equals(attr) && StrUtil.isNotBlank(value) && value.trim().equals(text.trim())) {
+                    continue;
+                }
+                if ("placeholder".equals(attr) && StrUtil.isNotBlank(value) && value.trim().equals(text.trim())) {
+                    continue;
+                }
+                filteredAttrs.put(attr, value);
             }
         }
 
