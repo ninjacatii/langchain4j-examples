@@ -1,0 +1,388 @@
+POST /v1/chat/completions HTTP/1.1
+Authorization: Bearer sk-0edf648e8f394fd8a9aad992882964da
+User-Agent: langchain4j-openai
+Content-Type: application/json
+Host: api.deepseek.com
+Accept: text/html, image/gif, image/jpeg, */*; q=0.2
+Connection: keep-alive
+Content-Length: 21897
+
+{
+  "model" : "deepseek-chat",
+  "messages" : [ {
+    "role" : "system",
+    "content" : "You are an AI agent designed to automate browser tasks. Your goal is to accomplish the ultimate task following the rules.\r\n\r\n# Input Format\r\n\r\nTask\r\nPrevious steps\r\nCurrent URL\r\nOpen Tabs\r\nInteractive Elements\r\n[index]<type>text</type>\r\n\r\n- index: Numeric identifier for interaction\r\n- type: HTML element type (button, input, etc.)\r\n- text: Element description\r\n  Example:\r\n  [33]<div>User form</div>\r\n  \\t*[35]*<button aria-label='Submit form'>Submit</button>\r\n\r\n- Only elements with numeric indexes in [] are interactive\r\n- (stacked) indentation (with \\t) is important and means that the element is a (html) child of the element above (with a lower index)\r\n- Elements with \\* are new elements that were added after the previous step (if url has not changed)\r\n\r\n# Response Rules\r\n\r\n1. RESPONSE FORMAT: You must ALWAYS respond with valid JSON in this exact format:\r\n   {{\"currentState\": {{\"evaluationPreviousGoal\": \"Success|Failed|Unknown - Analyze the current elements and the image to check if the previous goals/actions are successful like intended by the task. Mention if something unexpected happened. Shortly state why/why not\",\r\n   \"memory\": \"Description of what has been done and what you need to remember. Be very specific. Count here ALWAYS how many times you have done something and how many remain. E.g. 0 out of 10 websites analyzed. Continue with abc and xyz\",\r\n   \"nextGoal\": \"What needs to be done with the next immediate action\"}},\r\n   \"action\":[{{\"one_action_name\": {{// action-specific parameter}}}}, // ... more actions in sequence]}}\r\n\r\n2. ACTIONS: You can specify multiple actions in the list to be executed in sequence. But always specify only one action name per item. Use maximum 10 actions per sequence.\r\n   Common action sequences:\r\n\r\n- Form filling: [{{\"input_text\": {{\"index\": 1, \"text\": \"username\"}}}}, {{\"input_text\": {{\"index\": 2, \"text\": \"password\"}}}}, {{\"click_element\": {{\"index\": 3}}}}]\r\n- Navigation and extraction: [{{\"go_to_url\": {{\"url\": \"https://example.com\"}}}}, {{\"extract_content\": {{\"goal\": \"extract the names\"}}}}]\r\n- Actions are executed in the given order\r\n- If the page changes after an action, the sequence is interrupted and you get the new state.\r\n- Only provide the action sequence until an action which changes the page state significantly.\r\n- Try to be efficient, e.g. fill forms at once, or chain actions where nothing changes on the page\r\n- only use multiple actions if it makes sense.\r\n\r\n3. ELEMENT INTERACTION:\r\n\r\n- Only use indexes of the interactive elements\r\n\r\n4. NAVIGATION & ERROR HANDLING:\r\n\r\n- If no suitable elements exist, use other functions to complete the task\r\n- If stuck, try alternative approaches - like going back to a previous page, new search, new tab etc.\r\n- Handle popups/cookies by accepting or closing them\r\n- Use scroll to find elements you are looking for\r\n- If you want to research something, open a new tab instead of using the current tab\r\n- If captcha pops up, try to solve it - else try a different approach\r\n- If the page is not fully loaded, use wait action\r\n\r\n5. TASK COMPLETION:\r\n\r\n- Use the done action as the last action as soon as the ultimate task is complete\r\n- Dont use \"done\" before you are done with everything the user asked you, except you reach the last step of max_steps.\r\n- If you reach your last step, use the done action even if the task is not fully finished. Provide all the information you have gathered so far. If the ultimate task is completely finished set success to true. If not everything the user asked for is completed set success in done to false!\r\n- If you have to do something repeatedly for example the task says for \"each\", or \"for all\", or \"x times\", count always inside \"memory\" how many times you have done it and how many remain. Don't stop until you have completed like the task asked you. Only call done after the last step.\r\n- Don't hallucinate actions\r\n- Make sure you include everything you found out for the ultimate task in the done text parameter. Do not just say you are done, but include the requested information of the task.\r\n\r\n6. VISUAL CONTEXT:\r\n\r\n- When an image is provided, use it to understand the page layout\r\n- Bounding boxes with labels on their top right corner correspond to element indexes\r\n\r\n7. Form filling:\r\n\r\n- If you fill an input field and your action sequence is interrupted, most often something changed e.g. suggestions popped up under the field.\r\n\r\n8. Long tasks:\r\n\r\n- Keep track of the status and subresults in the memory.\r\n- You are provided with procedural memory summaries that condense previous task history (every N steps). Use these summaries to maintain context about completed actions, current progress, and next steps. The summaries appear in chronological order and contain key information about navigation history, findings, errors encountered, and current state. Refer to these summaries to avoid repeating actions and to ensure consistent progress toward the task goal.\r\n\r\n9. Extraction:\r\n\r\n- If your task is to find information - call extract_content on the specific pages to get and store the information.\r\n  Your responses must be always JSON with the specified format.\r\n"
+  }, {
+    "role" : "user",
+    "content" : "Your ultimate task is: \"\"\"Go to taobao.com, search for 'laptop', filter by 4+ stars, and find the price of the first result\"\"\". If you achieved your ultimate task, stop everything and use the done action in the next step to complete the task. If not, continue as usual."
+  }, {
+    "role" : "user",
+    "content" : "Example output:"
+  }, {
+    "role" : "assistant",
+    "content" : "",
+    "tool_calls" : [ {
+      "id" : "0",
+      "type" : "function",
+      "function" : {
+        "name" : "AgentOutput",
+        "arguments" : "{\"current_state\":{\"evaluation_previous_goal\":\"Success - I successfully clicked on the 'Apple' link from the Google Search results page,\\nwhich directed me to the 'Apple' company homepage. This is a good start toward finding\\nthe best place to buy a new iPhone as the Apple website often list iPhones for sale.\",\"memory\":\"I searched for 'iPhone retailers' on Google. From the Google Search results page,\\nI used the 'click_element' tool to click on a element labelled 'Best Buy' but calling\\nthe tool did not direct me to a new page. I then used the 'click_element' tool to click\\non a element labelled 'Apple' which redirected me to the 'Apple' company homepage.\\nCurrently at step 3/15.\",\"next_goal\":\"Looking at reported structure of the current page, I can see the item '[127]<h3 iPhone/>' \\nin the content. I think this button will lead to more information and potentially prices \\nfor iPhones. I'll click on the link to 'iPhone' at index [127] using the 'click_element' \\ntool and hope to see prices on the next page.\"},\"action\":[{\"click_element\":{\"index\":127}}]}"
+      }
+    } ]
+  }, {
+    "role" : "tool",
+    "tool_call_id" : "0",
+    "content" : "Browser started"
+  }, {
+    "role" : "user",
+    "content" : "[Your task history memory starts here]"
+  }, {
+    "role" : "user",
+    "content" : "[Task history memory ends]\n[Current state starts here]\nThe following is one-time information - if you need to remember it write it to memory:\nCurrent url:about:blankAvailable tabs:\n[TabInfo(pageId=0, url=about:blank, title=, parentPageId=null)]Interactive elements from top layer of the current page inside the viewport:\nempty pageCurrent step: 2/20Current date and time: 2025-05-13 21:40"
+  } ],
+  "stream" : false,
+  "tools" : [ {
+    "type" : "function",
+    "function" : {
+      "name" : "AgentOutput",
+      "description" : "AgentOutput model with custom actions",
+      "parameters" : {
+        "type" : "object",
+        "properties" : {
+          "current_state" : {
+            "type" : "object",
+            "description" : "Current state of the agent",
+            "properties" : {
+              "evaluation_previous_goal" : {
+                "type" : "string"
+              },
+              "memory" : {
+                "type" : "string"
+              },
+              "next_goal" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "evaluation_previous_goal", "memory", "next_goal" ]
+          },
+          "action" : {
+            "type" : "object",
+            "description" : "List of actions to execute",
+            "properties" : {
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "scroll_down" : {
+                    "description" : "Scroll down the page by pixel amount - if no amount is specified, scroll down one page",
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "description" : "ScrollDownAction",
+                      "properties" : {
+                        "amount" : {
+                          "type" : "integer",
+                          "description" : "Amount"
+                        }
+                      },
+                      "required" : [ "amount" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "extract_content" : {
+                    "description" : "Extract page content to retrieve specific information from the page, e.g. all company names, a specific description, all information about, links with companies in structured format or simply links",
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "description" : "ExtractContentAction",
+                      "properties" : {
+                        "goal" : {
+                          "type" : "string",
+                          "description" : "Goal"
+                        },
+                        "shouldStripLinkUrls" : {
+                          "type" : "boolean",
+                          "description" : "ShouldStripLinkUrls"
+                        }
+                      },
+                      "required" : [ "goal", "shouldStripLinkUrls" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "wait" : {
+                    "description" : "Wait for x seconds default 3",
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "description" : "WaitAction",
+                      "properties" : {
+                        "seconds" : {
+                          "type" : "integer",
+                          "description" : "Seconds"
+                        }
+                      },
+                      "required" : [ "seconds" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "input_text" : {
+                    "description" : "Input text into a input interactive element",
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "description" : "InputTextAction",
+                      "properties" : {
+                        "index" : {
+                          "type" : "integer",
+                          "description" : "Index"
+                        },
+                        "text" : {
+                          "type" : "string",
+                          "description" : "Text"
+                        },
+                        "xpath" : {
+                          "type" : "string",
+                          "description" : "Xpath"
+                        }
+                      },
+                      "required" : [ "index", "text", "xpath" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "click_clement_by_index" : {
+                    "description" : "Click element by index",
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "description" : "ClickClementByIndexAction",
+                      "properties" : {
+                        "index" : {
+                          "type" : "integer",
+                          "description" : "Index"
+                        },
+                        "xpath" : {
+                          "type" : "string",
+                          "description" : "Xpath"
+                        }
+                      },
+                      "required" : [ "index", "xpath" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "select_dropdown_option" : {
+                    "description" : "Select dropdown option for interactive element index by the text of the option you want to select",
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "description" : "SelectDropdownOptionAction",
+                      "properties" : {
+                        "index" : {
+                          "type" : "integer",
+                          "description" : "Index"
+                        },
+                        "text" : {
+                          "type" : "string",
+                          "description" : "Text"
+                        }
+                      },
+                      "required" : [ "index", "text" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "go_back" : {
+                    "description" : "Go back",
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "description" : "GoBackAction",
+                      "properties" : { },
+                      "required" : [ ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "scroll_up" : {
+                    "description" : "Scroll up the page by pixel amount - if no amount is specified, scroll up one page",
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "description" : "ScrollUpAction",
+                      "properties" : {
+                        "amount" : {
+                          "type" : "integer",
+                          "description" : "Amount"
+                        }
+                      },
+                      "required" : [ "amount" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "save_pdf" : {
+                    "description" : "Save the current page as a PDF file",
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "description" : "SavePdfAction",
+                      "properties" : { },
+                      "required" : [ ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "close_tab" : {
+                    "description" : "Close an existing tab",
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "description" : "CloseTabAction",
+                      "properties" : {
+                        "pageId" : {
+                          "type" : "integer",
+                          "description" : "PageId"
+                        }
+                      },
+                      "required" : [ "pageId" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "done" : {
+                    "description" : "Complete task - with return text and if the task is finished (success=True) or not yet  completely finished (success=False), because last step is reached",
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "description" : "DoneAction",
+                      "properties" : {
+                        "text" : {
+                          "type" : "string",
+                          "description" : "Text"
+                        },
+                        "success" : {
+                          "type" : "boolean",
+                          "description" : "Success"
+                        }
+                      },
+                      "required" : [ "text", "success" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "get_dropdown_options" : {
+                    "description" : "Get all options from a native dropdown",
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "description" : "GetDropdownOptionsAction",
+                      "properties" : {
+                        "index" : {
+                          "type" : "integer",
+                          "description" : "Index"
+                        }
+                      },
+                      "required" : [ "index" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "open_tab" : {
+                    "description" : "Open url in new tab",
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "description" : "OpenTabAction",
+                      "properties" : {
+                        "url" : {
+                          "type" : "string",
+                          "description" : "Url"
+                        }
+                      },
+                      "required" : [ "url" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "search_google" : {
+                    "description" : "Search the query in Google in the current tab, the query should be a search query like humans search in Google, concrete and not vague or super long. More the single most important items. ",
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "description" : "SearchGoogleAction",
+                      "properties" : {
+                        "query" : {
+                          "type" : "string",
+                          "description" : "Query"
+                        }
+                      },
+                      "required" : [ "query" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "go_to_url" : {
+                    "description" : "Navigate to URL in the current tab",
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "description" : "GoToUrlAction",
+                      "properties" : {
+                        "url" : {
+                          "type" : "string",
+                          "description" : "Url"
+                        }
+                      },
+                      "required" : [ "url" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "scroll_to_text" : {
+                    "description" : "If you dont find something which you want to interact with, scroll to it",
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "description" : "ScrollToTextAction",
+                      "properties" : {
+                        "text" : {
+                          "type" : "string",
+                          "description" : "Text"
+                        }
+                      },
+                      "required" : [ "text" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "send_keys" : {
+                    "description" : "Send strings of special keys like Escape,Backspace, Insert, PageDown, Delete, Enter, Shortcuts such as `Control+o`, `Control+Shift+T` are supported as well. This gets used in keyboard.press. ",
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "description" : "SendKeysAction",
+                      "properties" : {
+                        "keys" : {
+                          "type" : "string",
+                          "description" : "Keys"
+                        }
+                      },
+                      "required" : [ "keys" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "switch_tab" : {
+                    "description" : "Switch tab",
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "description" : "SwitchTabAction",
+                      "properties" : {
+                        "pageId" : {
+                          "type" : "integer",
+                          "description" : "PageId"
+                        }
+                      },
+                      "required" : [ "pageId" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ ]
+              }
+            },
+            "required" : [ ]
+          }
+        },
+        "required" : [ "current_state", "action" ]
+      }
+    }
+  } ]
+}

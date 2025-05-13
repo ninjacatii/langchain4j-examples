@@ -8,6 +8,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.microsoft.playwright.Page;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.example.entity.agent._prompts.AgentMessagePrompt;
 import dev.langchain4j.example.entity.agent._prompts.PlannerPrompt;
@@ -34,10 +35,7 @@ import dev.langchain4j.example.entity.browser._browser.Browser;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
-import dev.langchain4j.model.chat.request.json.JsonArraySchema;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchema;
-import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import dev.langchain4j.model.chat.request.json.*;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +45,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -513,12 +512,93 @@ public class Agent<T> {
         return responseFormat;
     }
 
+    public static String capitalizeFirstLetter(String str) {
+        if (StrUtil.isBlank(str)) {
+            return str; // 处理空或null字符串[1,3](@ref)
+        }
+        return str.substring(0, 1).toUpperCase() + str.substring(1);
+    }
+    public static String convertToUpperCamelCase(String input) {
+        if (input == null || input.isEmpty()) {
+            return input; // 处理空值或空字符串
+        }
+        Matcher matcher = Pattern.compile("_([a-z])").matcher(input);
+        StringBuffer sb = new StringBuffer();
+        while (matcher.find()) {
+            matcher.appendReplacement(sb, matcher.group(1).toUpperCase());
+        }
+        matcher.appendTail(sb);
+        // 首字母大写处理
+        return Character.toUpperCase(sb.charAt(0)) + sb.substring(1);
+    }
+
+    private JsonObjectSchema getParaJsonObjectScheme(RegisteredAction action) throws Exception {
+        JsonObjectSchema.Builder builder = JsonObjectSchema.builder();
+        var required = new ArrayList<String>();
+        for (int i = 0; i < action.paraType().length; i++) {
+            required.add(action.paraName()[i]);
+            builder = switch (action.paraType()[i].getName()) {
+                case "java.lang.String" ->
+                        builder.addStringProperty(action.paraName()[i], capitalizeFirstLetter(action.paraName()[i]));
+                case "java.lang.Integer" ->
+                        builder.addIntegerProperty(action.paraName()[i], capitalizeFirstLetter(action.paraName()[i]));
+                case "java.lang.Boolean" ->
+                        builder.addBooleanProperty(action.paraName()[i], capitalizeFirstLetter(action.paraName()[i]));
+                case "java.lang.Float", "java.lang.Double" ->
+                        builder.addNumberProperty(action.paraName()[i], capitalizeFirstLetter(action.paraName()[i]));
+                default -> throw new Exception("Unknown class name:" + action.paraType()[i].getName());
+            };
+        }
+
+        JsonObjectSchema result = builder
+                .required(required)
+                .description(convertToUpperCamelCase(action.name()) + "Action")
+                .build();
+
+        return result;
+    }
+
+    private JsonObjectSchema getActionJsonObjectSchema() throws Exception {
+        Map<String, RegisteredAction> map = this.controller.getRegistry().getRegistry().getActions();
+        JsonObjectSchema.Builder builder = JsonObjectSchema.builder();
+        for (String key: map.keySet()) {
+            RegisteredAction action = map.get(key);
+            builder = builder.addProperty(key, JsonAnyOfSchema.builder()
+                    .anyOf(getParaJsonObjectScheme(action), new JsonNullSchema())
+                    .description(action.description())
+                    .build());
+        }
+        return builder.build();
+    }
+
+    private ToolSpecification getToolSpecification() throws Exception {
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("AgentOutput")
+                .description("AgentOutput model with custom actions")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty("current_state", JsonObjectSchema.builder()
+                                .description("Current state of the agent")
+                                .addStringProperty("evaluation_previous_goal")
+                                .addStringProperty("memory")
+                                .addStringProperty("next_goal")
+                                .required(Arrays.asList("evaluation_previous_goal", "memory", "next_goal"))
+                                .build())
+                        .addProperty("action", JsonObjectSchema.builder()
+                                .description("List of actions to execute")
+                                .addProperty("items", getActionJsonObjectSchema())
+                                .build())
+                        .required(Arrays.asList("current_state", "action"))
+                        .build())
+                .build();
+        return toolSpecification;
+    }
+
     public AgentOutput getNextAction(List<ChatMessage> inputMessages) throws Exception {
         inputMessages = this.convertInputMessages(inputMessages);
 
         ChatResponse output;
         var response = new HashMap<String, Object>();
-        AgentOutput parsed;
+        AgentOutput parsed = null;
         if (this.toolCallingMethod == ToolCallingMethod.RAW) {
             log.debug("Using " + this.toolCallingMethod + " for " + this.chatModelLibrary);
             try {
@@ -540,12 +620,12 @@ public class Agent<T> {
             }
         } else if (this.toolCallingMethod == null) {
             try {
-//                ChatRequest chatRequest = ChatRequest.builder().responseFormat(getAgentOutputFormat()).messages(inputMessages).build();
-                ChatRequest chatRequest = ChatRequest.builder().messages(inputMessages).build();
+                ChatRequest chatRequest = ChatRequest.builder().toolSpecifications(getToolSpecification()).messages(inputMessages).build();
+//                ChatRequest chatRequest = ChatRequest.builder().messages(inputMessages).build();
                 output = this.llm.chat(chatRequest);
                 response.put("raw", output);
                 response.put("parsed", null);
-                parsed = null;
+                parsed = JSONUtil.toBean(output.aiMessage().toolExecutionRequests().get(0).arguments(), AgentOutput.class);
             } catch (Exception e) {
                 log.error("Failed to invoke model: {}", e.getMessage());
                 throw new LLMException(401, "LLM API call failed");
@@ -580,7 +660,7 @@ public class Agent<T> {
             } else {
                 parsed = null;
             }
-        } else {
+        } else if (parsed == null) {
             parsed = responseToAgentOutput(response);
         }
 

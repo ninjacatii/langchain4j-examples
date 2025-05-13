@@ -53,8 +53,8 @@ public class TestAgentActions {
     @Disabled("Expensive to run")
     void testEcommerceInteraction() {
         Agent agent = new Agent(
-                "请根据链接：https://digvps.com/review，找到链接里的评分等于8的VPS厂商（不要理会不评分或评分未知的厂商），点进这些厂商对应的链接，随机查看每个厂商提供的五款VPS价格和天梯等级，最后将年付价格低于1000块，且天梯等级为E1、E2、E3的VPS列出来，合并做成MD表格。注意：在处理网页信息时，不要原网页内容进行翻译。",
-//                "Go to taobao.com, search for 'laptop', filter by 4+ stars, and find the price of the first result",
+//                "请根据链接：https://digvps.com/review，找到链接里的评分等于8的VPS厂商（不要理会不评分或评分未知的厂商），点进这些厂商对应的链接，随机查看每个厂商提供的五款VPS价格和天梯等级，最后将年付价格低于1000块，且天梯等级为E1、E2、E3的VPS列出来，合并做成MD表格。注意：在处理网页信息时，不要原网页内容进行翻译。",
+                "Go to taobao.com, search for 'laptop', filter by 4+ stars, and find the price of the first result",
                 llm,
                 context);
 
