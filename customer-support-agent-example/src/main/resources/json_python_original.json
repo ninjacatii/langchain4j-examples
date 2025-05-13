@@ -11,7 +11,7 @@ X-Stainless-OS: Windows
 X-Stainless-Arch: other:amd64
 X-Stainless-Runtime: CPython
 X-Stainless-Runtime-Version: 3.13.2
-Authorization: Bearer sk-0edf648e8f394fd8a9aad992882964da
+Authorization: Bearer XXXX
 X-Stainless-Async: async:asyncio
 x-stainless-retry-count: 0
 x-stainless-read-timeout: 600

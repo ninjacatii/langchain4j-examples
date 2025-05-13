@@ -1,5 +1,5 @@
 POST /v1/chat/completions HTTP/1.1
-Authorization: Bearer sk-0edf648e8f394fd8a9aad992882964da
+Authorization: Bearer XXXX
 User-Agent: langchain4j-openai
 Content-Type: application/json
 Host: api.deepseek.com
