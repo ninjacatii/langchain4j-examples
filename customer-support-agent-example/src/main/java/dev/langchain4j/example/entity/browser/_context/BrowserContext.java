@@ -750,7 +750,7 @@ public class BrowserContext implements AutoCloseable {
                     try {
                         if (StrUtil.isNumeric(idx)) {
                             int index = Convert.toInt(idx) - 1;
-                            basePart += ":nth-of-type(" + index + 1 + ")";
+                            basePart += ":nth-of-type(" + (index + 1) + ")";
                         } else if ("last()".equals(idx)) {
                             basePart += ":last-of-type";
                         } else if (idx.contains("position()")) {

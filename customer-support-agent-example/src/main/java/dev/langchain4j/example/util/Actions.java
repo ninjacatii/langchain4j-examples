@@ -88,10 +88,10 @@ public class Actions {
 
     @MethodToAction(
             description = "Click element by index",
-            paraType = { Integer.class, String.class },
-            paraName = { "index", "xpath" }
+            paraType = { Integer.class },
+            paraName = { "index" }
     )
-    public static ActionResult click_clement_by_index(Integer index, String xpath, BrowserContext browser, ChatLanguageModel pageExtractionLlm) throws Exception {
+    public static ActionResult click_element(Integer index, BrowserContext browser, ChatLanguageModel pageExtractionLlm) throws Exception {
         BrowserSession session = browser.getSession();
 
         if (!browser.getSelectorMap().containsKey(index)) {
@@ -119,7 +119,6 @@ public class Actions {
             }
 
             log.info(msg);
-            log.debug("Element xpath: {}", xpath);
             if (session.getContext().pages().size() > initialPages) {
                 String newTabMsg = "New tab opened - switching to it";
                 msg += " - " + newTabMsg;
@@ -135,10 +134,10 @@ public class Actions {
 
     @MethodToAction(
             description = "Input text into a input interactive element",
-            paraType = { Integer.class, String.class, String.class },
-            paraName = { "index", "text", "xpath" }
+            paraType = { Integer.class, String.class },
+            paraName = { "index", "text" }
     )
-    public static ActionResult input_text(Integer index, String text, String xpath, BrowserContext browser, ChatLanguageModel pageExtractionLlm) throws Exception {
+    public static ActionResult input_text(Integer index, String text, BrowserContext browser, ChatLanguageModel pageExtractionLlm) throws Exception {
         if (!browser.getSelectorMap().containsKey(index)) {
             throw new Exception("Element with index " + index + " does not exist - retry or use alternative actions");
         }
@@ -147,7 +146,6 @@ public class Actions {
         browser.inputTextElementNode(elementNode, text);
         String msg = "⌨️  Input {params.text} into index " + index;
         log.info(msg);
-        log.debug("Element xpath: {}", xpath);
         return ActionResult.builder().extractedContent(msg).includeInMemory(true).build();
     }
 
