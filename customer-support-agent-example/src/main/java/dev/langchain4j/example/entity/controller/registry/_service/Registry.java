@@ -12,6 +12,7 @@ import dev.langchain4j.example.iface.MethodToAction;
 import dev.langchain4j.example.util.ActionPageFilters;
 import dev.langchain4j.example.util.Actions;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -98,7 +99,7 @@ public class Registry<T> {
     public ActionResult executeAction(String actionName,
                                 Map<String, Object> params,
                                 BrowserContext browser,
-                                ChatLanguageModel pageExtractionLlm,
+                                OpenAiStreamingChatModel pageExtractionLlm,
                                 Map<String, String> sensitiveData,
                                 List<String> availableFilePaths,
                                 T context) {
@@ -117,7 +118,7 @@ public class Registry<T> {
         }
     }
 
-    private Object[] validateParams(String[] paraName, Map<String, Object> params, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
+    private Object[] validateParams(String[] paraName, Map<String, Object> params, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) {
         var result = new Object[paraName.length + 2];
         for (int i = 0; i < paraName.length; i++) {
             String name = paraName[i];

@@ -7,7 +7,7 @@ public class AgentError {
     public static final String RATE_LIMIT_ERROR = "Rate limit reached. Waiting before retry.";
     public static final String NO_VALID_ACTION = "No valid action found";
 
-    public static String formatError(Exception error, boolean includeTrace) {
+    public static String formatError(Throwable error, boolean includeTrace) {
 //        if (error instanceof ValidationError) {
 //            return VALIDATION_ERROR + "\nDetails: " + error.getMessage();
 //        } else if (error instanceof RateLimitError) {

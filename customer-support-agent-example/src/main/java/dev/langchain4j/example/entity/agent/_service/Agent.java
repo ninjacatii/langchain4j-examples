@@ -37,12 +37,14 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.*;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.yaml.snakeyaml.util.Tuple;
 
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -426,7 +428,7 @@ public class Agent<T> {
             }
 
             this.state.setConsecutiveFailures(0);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             log.error("step error:{}", e.getMessage(), e);
             result = this.handleStepError(e);
             this.state.setLastResult(result);
@@ -447,7 +449,7 @@ public class Agent<T> {
         }
     }
 
-    private List<ActionResult> handleStepError(Exception e) {
+    private List<ActionResult> handleStepError(Throwable e) {
         String errorMsg = AgentError.formatError(e, false);
         String prefix = "❌ Result failed {self.state.consecutive_failures + 1}/{self.settings.max_failures} times:\n ";
         this.state.setConsecutiveFailures(this.state.getConsecutiveFailures() + 1);
@@ -594,7 +596,67 @@ public class Agent<T> {
         return toolSpecification;
     }
 
-    public AgentOutput getNextAction(List<ChatMessage> inputMessages) throws Exception {
+    private ChatResponse getChatResponse(OpenAiStreamingChatModel llm, List<ChatMessage> inputMessages) throws Throwable {
+        var latch = new CountDownLatch(1);
+        final MyChatResponse response = new MyChatResponse();
+        llm.chat(inputMessages, new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                // System.out.println("onPartialResponse: " + partialResponse);
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                response.setChatResponse(completeResponse);
+                latch.countDown();
+                // System.out.println("onCompleteResponse: " + completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                response.setThrowable(error);
+                latch.countDown();
+                // error.printStackTrace();
+            }
+        });
+        latch.await();
+        if (response.getThrowable() != null) {
+            throw response.getThrowable();
+        }
+        return response.getChatResponse();
+    }
+
+    private ChatResponse getChatResponse(OpenAiStreamingChatModel llm, ChatRequest chatRequest) throws Throwable {
+        var latch = new CountDownLatch(1);
+        final MyChatResponse response = new MyChatResponse();
+        llm.chat(chatRequest, new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                // System.out.println("onPartialResponse: " + partialResponse);
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                response.setChatResponse(completeResponse);
+                latch.countDown();
+                // System.out.println("onCompleteResponse: " + completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                response.setThrowable(error);
+                latch.countDown();
+                // error.printStackTrace();
+            }
+        });
+        latch.await();
+        if (response.getThrowable() != null) {
+            throw response.getThrowable();
+        }
+        return response.getChatResponse();
+    }
+
+    public AgentOutput getNextAction(List<ChatMessage> inputMessages) throws Throwable {
         inputMessages = this.convertInputMessages(inputMessages);
 
         ChatResponse output;
@@ -603,7 +665,7 @@ public class Agent<T> {
         if (this.toolCallingMethod == ToolCallingMethod.RAW) {
             log.debug("Using " + this.toolCallingMethod + " for " + this.chatModelLibrary);
             try {
-                output = this.llm.chat(inputMessages);
+                output = getChatResponse(this.llm, inputMessages);
                 response.put("raw", output);
                 response.put("parsed", null);
             } catch (Exception e) {
@@ -623,17 +685,17 @@ public class Agent<T> {
             try {
                 ChatRequest chatRequest = ChatRequest.builder().toolSpecifications(getToolSpecification()).messages(inputMessages).build();
 //                ChatRequest chatRequest = ChatRequest.builder().messages(inputMessages).build();
-                output = this.llm.chat(chatRequest);
+                output = getChatResponse(this.llm, chatRequest);
                 response.put("raw", output);
                 response.put("parsed", null);
                 parsed = JSONUtil.toBean(output.aiMessage().toolExecutionRequests().get(0).arguments(), AgentOutput.class);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 log.error("Failed to invoke model: {}", e.getMessage());
                 throw new LLMException(401, "LLM API call failed");
             }
         } else {
             log.debug("Using {} for {}", this.toolCallingMethod, this.chatModelLibrary);
-            output = this.llm.chat(inputMessages);
+            output = getChatResponse(this.llm, inputMessages);
             response.put("raw", output);
             response.put("parsed", null);
         }
@@ -723,7 +785,7 @@ public class Agent<T> {
         log.debug("Version: {}, Source: {}", this.version, this.source);
     }
 
-    public Tuple<Boolean, Boolean> takeStep() {
+    public Tuple<Boolean, Boolean> takeStep() throws Throwable {
         this.step(null);
 
         if (this.state.getHistory().isDone()) {
@@ -742,7 +804,7 @@ public class Agent<T> {
         return new Tuple<>(false, false);
     }
 
-    public AgentHistoryList run(int maxSteps, AgentHookFunc onStepStart, AgentHookFunc onStepEnd) {
+    public AgentHistoryList run(int maxSteps, AgentHookFunc onStepStart, AgentHookFunc onStepEnd) throws Throwable {
         if (this.verificationTask != null) {
             try {
                 this.verificationTask.run();
@@ -863,7 +925,7 @@ public class Agent<T> {
         return results;
     }
 
-    private boolean validateOutput() {
+    private boolean validateOutput() throws Throwable {
         String systemMsg =
                 "You are a validator of an agent who interacts with a browser. " +
                         "Validate if the output of last action is what the user wanted and if the task is completed. " +
@@ -878,7 +940,7 @@ public class Agent<T> {
             BrowserState state = this.browserContext.getState(false);
             AgentMessagePrompt content = new AgentMessagePrompt(state, this.state.getLastResult(), this.settings.getIncludeAttributes(), null);
             List<ChatMessage> msg = Arrays.asList(new SystemMessage(systemMsg));
-            ChatResponse output = this.llm.chat(msg);
+            ChatResponse output = getChatResponse(this.llm, msg);
             JSONObject response = JSONUtil.parseObj(output.aiMessage().text());
             JSONObject parsed = response.getJSONObject("parsed");
             boolean isValid = parsed.getBool("is_valid");
@@ -1022,7 +1084,7 @@ public class Agent<T> {
         return convertedActions;
     }
 
-    private String runPlanner() {
+    private String runPlanner() throws Throwable {
         if (this.settings.getPlannerLlm() == null) {
             return null;
         }
@@ -1068,7 +1130,7 @@ public class Agent<T> {
 
         ChatResponse output;
         try {
-            output = this.settings.getPlannerLlm().chat(plannerMessages);
+            output = getChatResponse(this.settings.getPlannerLlm(), plannerMessages);
         } catch (Exception e) {
             log.error("Failed to invoke planner: {}", e.getMessage());
             throw new LLMException(401, "LLM API call failed");
