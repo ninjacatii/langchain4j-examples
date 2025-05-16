@@ -596,6 +596,36 @@ public class Agent<T> {
         return toolSpecification;
     }
 
+    public static String getChatString(OpenAiStreamingChatModel llm, String msg) throws Throwable {
+        var latch = new CountDownLatch(1);
+        final MyChatResponse response = new MyChatResponse();
+        llm.chat(msg, new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                // System.out.println("onPartialResponse: " + partialResponse);
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                response.setChatResponse(completeResponse);
+                latch.countDown();
+                // System.out.println("onCompleteResponse: " + completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                response.setThrowable(error);
+                latch.countDown();
+                // error.printStackTrace();
+            }
+        });
+        latch.await();
+        if (response.getThrowable() != null) {
+            throw response.getThrowable();
+        }
+        return response.getChatResponse().aiMessage().text();        
+    }
+
     public static ChatResponse getChatResponse(OpenAiStreamingChatModel llm, List<ChatMessage> inputMessages) throws Throwable {
         var latch = new CountDownLatch(1);
         final MyChatResponse response = new MyChatResponse();

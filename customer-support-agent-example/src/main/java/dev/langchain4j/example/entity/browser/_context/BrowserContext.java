@@ -33,8 +33,9 @@ import dev.langchain4j.example.entity.dom._service.DomService;
 import dev.langchain4j.example.entity.dom._views.DOMBaseNode;
 import dev.langchain4j.example.entity.dom._views.DOMElementNode;
 import dev.langchain4j.example.entity.dom._views.DOMState;
-import dev.langchain4j.example.util.dom.history_tree_processor.Utils;
+
 import dev.langchain4j.example.entity.dom.clickable_element_processor._service.ClickableElementProcessor;
+import dev.langchain4j.example.util.Utils;
 import lombok.extern.slf4j.Slf4j;
 import org.yaml.snakeyaml.util.Tuple;
 

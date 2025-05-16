@@ -1,4 +1,4 @@
-package dev.langchain4j.example.util.dom.history_tree_processor;
+package dev.langchain4j.example.util;
 
 import dev.langchain4j.example.entity.ParseResult;
 

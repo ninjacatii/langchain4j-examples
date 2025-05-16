@@ -8,6 +8,8 @@ import com.microsoft.playwright.Frame;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.Media;
+
+import dev.langchain4j.example.entity.agent._service.Agent;
 import dev.langchain4j.example.entity.agent._views.ActionResult;
 import dev.langchain4j.example.entity.browser._context.BrowserContext;
 import dev.langchain4j.example.entity.browser._context.BrowserSession;
@@ -224,7 +226,7 @@ public class Actions {
             paraType = { String.class, Boolean.class },
             paraName = { "goal", "shouldStripLinkUrls" }
     )
-    public static ActionResult extract_content(String goal, Boolean shouldStripLinkUrls, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) {
+    public static ActionResult extract_content(String goal, Boolean shouldStripLinkUrls, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) throws Throwable {
         Page page = browser.getCurrentPage();
 
         var converter = new CopyDown();
@@ -239,7 +241,7 @@ public class Actions {
 
         String prompt = "Your task is to extract the content of the page. You will be given a page and a goal and you should extract all relevant information around this goal from the page. If the goal is vague, summarize the page. Respond in json format. Extraction goal: " + goal + ", Page: " + content;
         try {
-            String output = pageExtractionLlm.chat(prompt);
+            String output = Agent.getChatString(pageExtractionLlm, prompt);
             String msg = "📄  Extracted from page\n: " + output + "\n";
             log.info(msg);
             return ActionResult.builder().extractedContent(msg).includeInMemory(true).build();
