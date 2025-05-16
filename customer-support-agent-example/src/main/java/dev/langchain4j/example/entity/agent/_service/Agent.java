@@ -37,6 +37,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.*;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.yaml.snakeyaml.util.Tuple;
@@ -52,7 +53,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class Agent<T> {
     private String task;
-    private ChatLanguageModel llm;
+    private OpenAiStreamingChatModel llm;
     private Controller<T> controller;
     private Map<String, String> sensitiveData;
     private AgentSettings settings;
@@ -82,7 +83,7 @@ public class Agent<T> {
     private Runnable verificationTask;
 
     public Agent(String task,
-                 ChatLanguageModel llm,
+                OpenAiStreamingChatModel llm,
                  BrowserContext browserContext) {
         this(task, llm, null, browserContext, new Controller(null), null, null, null, null, null,
                 AgentSettings.builder()
@@ -128,7 +129,7 @@ public class Agent<T> {
 
     public Agent(
             String task,
-            ChatLanguageModel llm,
+            OpenAiStreamingChatModel llm,
             // Optional parameters
             Browser browser,
             BrowserContext browserContext,

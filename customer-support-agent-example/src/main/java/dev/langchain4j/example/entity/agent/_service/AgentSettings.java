@@ -1,6 +1,7 @@
 package dev.langchain4j.example.entity.agent._service;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import lombok.Builder;
 import lombok.Data;
 
@@ -42,8 +43,8 @@ public class AgentSettings {
     private int maxActionsPerStep = 10;
     @Builder.Default
     private String toolCallingMethod = "auto";
-    private ChatLanguageModel pageExtractionLlm;
-    private ChatLanguageModel plannerLlm;
+    private OpenAiStreamingChatModel pageExtractionLlm;
+    private OpenAiStreamingChatModel plannerLlm;
     @Builder.Default
     private int plannerInterval = 1;
     @Builder.Default
