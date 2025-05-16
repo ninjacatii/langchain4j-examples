@@ -596,7 +596,7 @@ public class Agent<T> {
         return toolSpecification;
     }
 
-    private ChatResponse getChatResponse(OpenAiStreamingChatModel llm, List<ChatMessage> inputMessages) throws Throwable {
+    public static ChatResponse getChatResponse(OpenAiStreamingChatModel llm, List<ChatMessage> inputMessages) throws Throwable {
         var latch = new CountDownLatch(1);
         final MyChatResponse response = new MyChatResponse();
         llm.chat(inputMessages, new StreamingChatResponseHandler() {
@@ -626,7 +626,7 @@ public class Agent<T> {
         return response.getChatResponse();
     }
 
-    private ChatResponse getChatResponse(OpenAiStreamingChatModel llm, ChatRequest chatRequest) throws Throwable {
+    public static ChatResponse getChatResponse(OpenAiStreamingChatModel llm, ChatRequest chatRequest) throws Throwable {
         var latch = new CountDownLatch(1);
         final MyChatResponse response = new MyChatResponse();
         llm.chat(chatRequest, new StreamingChatResponseHandler() {

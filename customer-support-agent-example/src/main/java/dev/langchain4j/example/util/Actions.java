@@ -13,8 +13,8 @@ import dev.langchain4j.example.entity.browser._context.BrowserContext;
 import dev.langchain4j.example.entity.browser._context.BrowserSession;
 import dev.langchain4j.example.entity.dom._views.DOMElementNode;
 import dev.langchain4j.example.iface.MethodToAction;
-import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import io.github.furstenheim.CopyDown;
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,7 +32,7 @@ public class Actions {
             paraType = { String.class, Boolean.class },
             paraName = { "text", "success" }
     )
-    public static ActionResult done(String text, Boolean success, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
+    public static ActionResult done(String text, Boolean success, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) {
         return ActionResult.builder().isDone(true).success(success).extractedContent(text).build();
     }
 
@@ -41,7 +41,7 @@ public class Actions {
         paraType = { String.class },
         paraName = { "query" }
     )
-    public static ActionResult search_google(String query, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
+    public static ActionResult search_google(String query, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) {
         Page page = browser.getCurrentPage();
         page.navigate("https://cn.bing.com/search?q=" + query + "&ensearch=1'");
         String msg = "🔍  Searched for \"" + query + "\" in Bing";
@@ -54,7 +54,7 @@ public class Actions {
             paraType = { String.class },
             paraName = { "url" }
     )
-    public static ActionResult go_to_url(String url, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
+    public static ActionResult go_to_url(String url, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) {
         Page page = browser.getCurrentPage();
         page.navigate(url);
         page.waitForLoadState();
@@ -67,7 +67,7 @@ public class Actions {
             paraType = {  },
             paraName = {  }
     )
-    public static ActionResult go_back(BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
+    public static ActionResult go_back(BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) {
         browser.goBack();
         String msg = "🔙  Navigated back";
         log.info(msg);
@@ -79,7 +79,7 @@ public class Actions {
             paraType = { Integer.class },
             paraName = { "seconds" }
     )
-    public static ActionResult wait(Integer seconds, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
+    public static ActionResult wait(Integer seconds, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) {
         String msg = "🕒  Waiting for {seconds} seconds";
         log.info(msg);
         ThreadUtil.sleep(seconds, TimeUnit.SECONDS);
@@ -91,7 +91,7 @@ public class Actions {
             paraType = { Integer.class },
             paraName = { "index" }
     )
-    public static ActionResult click_element(Integer index, BrowserContext browser, ChatLanguageModel pageExtractionLlm) throws Exception {
+    public static ActionResult click_element(Integer index, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) throws Exception {
         BrowserSession session = browser.getSession();
 
         if (!browser.getSelectorMap().containsKey(index)) {
@@ -137,7 +137,7 @@ public class Actions {
             paraType = { Integer.class, String.class },
             paraName = { "index", "text" }
     )
-    public static ActionResult input_text(Integer index, String text, BrowserContext browser, ChatLanguageModel pageExtractionLlm) throws Exception {
+    public static ActionResult input_text(Integer index, String text, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) throws Exception {
         if (!browser.getSelectorMap().containsKey(index)) {
             throw new Exception("Element with index " + index + " does not exist - retry or use alternative actions");
         }
@@ -154,7 +154,7 @@ public class Actions {
             paraType = {  },
             paraName = {  }
     )
-    public static ActionResult save_pdf(BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
+    public static ActionResult save_pdf(BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) {
         Page page = browser.getCurrentPage();
         // 原始 Python 代码:
         // short_url = re.sub(r'^https?://(?:www\.)?|/$', '', page.url)
@@ -182,7 +182,7 @@ public class Actions {
             paraType = { Integer.class },
             paraName = { "pageId" }
     )
-    public static ActionResult switch_tab(Integer pageId, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
+    public static ActionResult switch_tab(Integer pageId, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) {
         browser.switchToTab(pageId);
 
         Page page = browser.getCurrentPage();
@@ -197,7 +197,7 @@ public class Actions {
             paraType = { String.class },
             paraName = { "url" }
     )
-    public static ActionResult open_tab(String url, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
+    public static ActionResult open_tab(String url, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) {
         browser.createNewTab(url);
         String msg = "🔗  Opened new tab with " + url;
         log.info(msg);
@@ -209,7 +209,7 @@ public class Actions {
             paraType = { Integer.class },
             paraName = { "pageId" }
     )
-    public static ActionResult close_tab(Integer pageId, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
+    public static ActionResult close_tab(Integer pageId, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) {
         browser.switchToTab(pageId);
         Page page = browser.getCurrentPage();
         String url = page.url();
@@ -224,7 +224,7 @@ public class Actions {
             paraType = { String.class, Boolean.class },
             paraName = { "goal", "shouldStripLinkUrls" }
     )
-    public static ActionResult extract_content(String goal, Boolean shouldStripLinkUrls, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
+    public static ActionResult extract_content(String goal, Boolean shouldStripLinkUrls, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) {
         Page page = browser.getCurrentPage();
 
         var converter = new CopyDown();
@@ -256,7 +256,7 @@ public class Actions {
             paraType = { Integer.class },
             paraName = { "amount" }
     )
-    public static ActionResult scroll_down(Integer amount, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
+    public static ActionResult scroll_down(Integer amount, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) {
         Page page = browser.getCurrentPage();
         if (amount != null) {
             page.evaluate("window.scrollBy(0, " + amount + ");");
@@ -275,7 +275,7 @@ public class Actions {
             paraType = { Integer.class },
             paraName = { "amount" }
     )
-    public static ActionResult scroll_up(Integer amount, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
+    public static ActionResult scroll_up(Integer amount, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) {
         Page page = browser.getCurrentPage();
         if (amount != null) {
             page.evaluate("window.scrollBy(0, " + -amount + ");");
@@ -294,7 +294,7 @@ public class Actions {
             paraType = { String.class },
             paraName = { "keys" }
     )
-    public static ActionResult send_keys(String keys, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
+    public static ActionResult send_keys(String keys, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) {
         Page page = browser.getCurrentPage();
 
         try {
@@ -323,7 +323,7 @@ public class Actions {
             paraType = { String.class },
             paraName = { "text" }
     )
-    public static ActionResult scroll_to_text(String text, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
+    public static ActionResult scroll_to_text(String text, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) {
         Page page = browser.getCurrentPage();
         try {
             List<Locator> locators = Arrays.asList(
@@ -362,7 +362,7 @@ public class Actions {
             paraType = { Integer.class },
             paraName = { "index" }
     )
-    public static ActionResult get_dropdown_options(Integer index, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
+    public static ActionResult get_dropdown_options(Integer index, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) {
         Page page = browser.getCurrentPage();
         Map<Integer, DOMElementNode> selectorMap = browser.getSelectorMap();
         DOMElementNode domElement = selectorMap.get(index);
@@ -431,7 +431,7 @@ public class Actions {
             paraType = { Integer.class, String.class },
             paraName = { "index", "text" }
     )
-    public static ActionResult select_dropdown_option(Integer index, String text, BrowserContext browser, ChatLanguageModel pageExtractionLlm) {
+    public static ActionResult select_dropdown_option(Integer index, String text, BrowserContext browser, OpenAiStreamingChatModel pageExtractionLlm) {
         Page page = browser.getCurrentPage();
         Map<Integer, DOMElementNode> selectorMap = browser.getSelectorMap();
         DOMElementNode domElement = selectorMap.get(index);
